@@ -38,6 +38,10 @@ inputs:
     description: "`true` to push the built image. `false` otherwise (default)."
     required: true
     default: "false"
+  platforms:
+    description: "List of platforms to build"
+    required: true
+    default: "linux/amd64,linux/arm64"
   version:
     description: The SemVer compatible version for this image, without prefixes.
     required: true
@@ -84,6 +88,9 @@ runs:
       uses: aws-actions/amazon-ecr-login@v1
       if: inputs.push == 'true' && steps.context.outputs.is-ecr == 'true'
 
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v1
+
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v1
 
@@ -96,6 +103,7 @@ runs:
         context: ${{ inputs.context }}
         file: ${{ inputs.working-directory }}/${{ inputs.dockerfile }}
         push: ${{ inputs.push == 'true' }}
+        platforms: ${{ inputs.platforms }}
         tags: ${{ steps.metadata.outputs.tags }}
         labels: ${{ steps.metadata.outputs.labels }}
 
