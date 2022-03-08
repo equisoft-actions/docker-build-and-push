@@ -69,7 +69,7 @@ runs:
 
     - name: Prepare image data
       id: metadata
-      uses: equisoft-actions/docker-metadata@v1.0.0
+      uses: equisoft-actions/docker-metadata@v1.0.1
       with:
         title: ${{ inputs.name }}
         image-name: ${{ inputs.registry }}/${{ inputs.name }}
