@@ -86,7 +86,7 @@ runs:
 
     - name: Login to ECR
       uses: aws-actions/amazon-ecr-login@v1
-      if: inputs.push == 'true' && steps.context.outputs.is-ecr == 'true'
+      if: steps.context.outputs.is-ecr == 'true'
 
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v1
