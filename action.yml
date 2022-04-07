@@ -78,7 +78,7 @@ runs:
 
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v1
-      if: inputs.push == 'true' && steps.context.outputs.is-ecr == 'true'
+      if: steps.context.outputs.is-ecr == 'true'
       with:
         aws-access-key-id: ${{ inputs.aws-access-key-id }}
         aws-secret-access-key: ${{ inputs.aws-secret-access-key }}
