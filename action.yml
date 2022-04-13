@@ -27,6 +27,14 @@ inputs:
     description: Relative Dockerfile under `working-directory`.
     required: true
     default: Dockerfile
+  request-memory:
+    description: Requested memory for k8s
+    required: true
+    default: '2Gi'
+  max-memory:
+    description: Max memory for k8s
+    required: true
+    default: '6Gi'
   name:
     description: A simple name for this image
     required: true
@@ -42,6 +50,10 @@ inputs:
     description: "List of platforms to build"
     required: true
     default: "linux/amd64,linux/arm64"
+  use-emulation:
+    description: "Set to false to use k8s cluster"
+    required: true
+    default: "true"
   version:
     description: The SemVer compatible version for this image, without prefixes.
     required: true
@@ -90,9 +102,36 @@ runs:
 
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v1
+      if: inputs.use-emulation == 'true'
 
-    - name: Set up Docker Buildx
+    - name: Set up Local Docker Buildx
       uses: docker/setup-buildx-action@v1
+      if: inputs.use-emulation == 'true'
+
+    - name: Set up k8s Docker Buildx
+      id: k8s-buildx
+      uses: docker/setup-buildx-action@v1
+      if: inputs.use-emulation == 'false'
+      with:
+        driver: kubernetes
+        driver-opts: |
+          namespace=actions-runner-docker
+          requests.cpu=1
+          limits.cpu=4
+          requests.memory=${{ inputs.request-memory }}
+          limits.memory=${{ inputs.max-memory }}
+          nodeselector=kubernetes.io/arch=amd64
+          rootless=true
+
+    - name: Set up k8s Docker Buildx
+      shell: bash
+      if: inputs.use-emulation == 'false'
+      run: |
+        for row in $(echo ${{ inputs.platforms }} | jq -R -c 'split(",") | del(.[] | select(. == "linux/amd64")) | .[]'); do
+          platform=$(echo $row | jq -r .)
+          arch=${platform##*/}
+          docker buildx create --append --name ${{ steps.k8s-buildx.outputs.name }} --node ${{ steps.k8s-buildx.outputs.name }}-$arch --driver=kubernetes --platform $platform --driver-opt "namespace=actions-runner-docker,requests.cpu=1,requests.memory=${{ inputs.request-memory }},limits.cpu=4,limits.memory=${{ inputs.max-memory }},nodeselector=kubernetes.io/arch=${arch},rootless=true"
+        done
 
     - name: Build and push
       uses: docker/build-push-action@v2
