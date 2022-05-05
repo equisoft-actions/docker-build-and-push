@@ -105,12 +105,12 @@ runs:
       if: inputs.use-emulation == 'true'
 
     - name: Set up Local Docker Buildx
-      uses: docker/setup-buildx-action@v1
+      uses: docker/setup-buildx-action@v2
       if: inputs.use-emulation == 'true'
 
     - name: Set up k8s Docker Buildx
       id: k8s-buildx
-      uses: docker/setup-buildx-action@v1
+      uses: docker/setup-buildx-action@v2
       if: inputs.use-emulation == 'false'
       with:
         driver: kubernetes
