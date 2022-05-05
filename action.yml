@@ -101,7 +101,7 @@ runs:
       if: steps.context.outputs.is-ecr == 'true'
 
     - name: Set up QEMU
-      uses: docker/setup-qemu-action@v1
+      uses: docker/setup-qemu-action@v2
       if: inputs.use-emulation == 'true'
 
     - name: Set up Local Docker Buildx
