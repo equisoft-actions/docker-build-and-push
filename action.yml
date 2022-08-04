@@ -65,6 +65,9 @@ inputs:
     default: "."
 
 outputs:
+  image-id:
+    description: Image ID built by this action
+    value: ${{ steps.build-push.outputs.imageid }}
   image-version:
     description: Image version built by this action
     value: ${{ steps.outputs.outputs.image-version }}
@@ -134,6 +137,7 @@ runs:
         done
 
     - name: Build and push
+      id: build-push
       uses: docker/build-push-action@v3
       with:
         build-args: ${{ inputs.build-args }}
@@ -141,6 +145,7 @@ runs:
         cache-to: type=gha,mode=max
         context: ${{ inputs.context }}
         file: ${{ inputs.working-directory }}/${{ inputs.dockerfile }}
+        load: true
         push: ${{ inputs.push == 'true' }}
         platforms: ${{ inputs.platforms }}
         tags: ${{ steps.metadata.outputs.tags }}
