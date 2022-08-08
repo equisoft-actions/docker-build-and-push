@@ -145,7 +145,7 @@ runs:
         cache-to: type=gha,mode=max
         context: ${{ inputs.context }}
         file: ${{ inputs.working-directory }}/${{ inputs.dockerfile }}
-        load: ${{ inputs.push != 'true' }}
+        load: ${{ inputs.push != 'true' && !contains(inputs.platforms, ',') }}
         push: ${{ inputs.push == 'true' }}
         platforms: ${{ inputs.platforms }}
         tags: ${{ steps.metadata.outputs.tags }}
