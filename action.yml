@@ -7,7 +7,7 @@ inputs:
     required: false
     default: registry.equisoft.io
   aws-access-key-id:
-    description: An AWS access key ID that has write permissions to the registry.
+    description: DEPRECATED. Use `role-to-assume` instead. An AWS access key ID that has write permissions to the registry.
     required: false
   aws-secret-access-key:
     description: An AWS secret access key that has write permissions to the registry.
@@ -50,6 +50,12 @@ inputs:
     description: "List of platforms to build"
     required: true
     default: "linux/amd64,linux/arm64"
+  role-to-assume:
+    description: Role to assume that has write access to the registry.
+    required: false
+  role-session-name:
+    description: Session name to use when assuming the role.
+    required: false
   use-emulation:
     description: "Set to false to use k8s cluster"
     required: true
@@ -79,8 +85,8 @@ runs:
       shell: bash
       id: context
       run: |
-        working_directory=$(realpath ${{ inputs.working-directory }})
-        echo "::set-output name=is-ecr::${{ inputs.aws-access-key-id != '' && inputs.aws-secret-access-key != '' && inputs.aws-region != '' }}"
+        echo "has-role=${{ inputs.role-to-assume != '' }}" >> $GITHUB_OUTPUT
+        echo "is-ecr=${{ inputs.aws-region != '' }}" >> $GITHUB_OUTPUT
 
     - name: Prepare image data
       id: metadata
@@ -95,9 +101,11 @@ runs:
       uses: aws-actions/configure-aws-credentials@v1
       if: steps.context.outputs.is-ecr == 'true'
       with:
-        aws-access-key-id: ${{ inputs.aws-access-key-id }}
-        aws-secret-access-key: ${{ inputs.aws-secret-access-key }}
+        aws-access-key-id: ${{ steps.context.outputs.has-role && '' || inputs.aws-access-key-id }}
+        aws-secret-access-key: ${{ steps.context.outputs.has-role && '' || inputs.aws-secret-access-key }}
         aws-region: ${{ inputs.aws-region }}
+        role-to-assume: ${{ inputs.role-to-assume }}
+        role-session-name: ${{ inputs.role-session-name }}
 
     - name: Login to ECR
       uses: aws-actions/amazon-ecr-login@v1
