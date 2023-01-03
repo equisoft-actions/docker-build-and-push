@@ -165,4 +165,4 @@ runs:
       run: |
         IMAGE_TAG=$(cut -d',' -f1 <<<'${{ steps.metadata.outputs.tags }}')
         IMAGE_VERSION=$(cut -d':' -f2 <<<"${IMAGE_TAG}")
-        echo "::set-output name=image-version::${IMAGE_VERSION}"
+        echo "image-version=${IMAGE_VERSION}" >> $GITHUB_OUTPUT
