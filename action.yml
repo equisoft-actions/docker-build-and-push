@@ -30,7 +30,7 @@ inputs:
   request-memory:
     description: Requested memory for k8s
     required: true
-    default: '2Gi'
+    default: '4Gi'
   max-memory:
     description: Max memory for k8s
     required: true
