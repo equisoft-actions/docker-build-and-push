@@ -38,8 +38,16 @@ inputs:
   name:
     description: A simple name for this image
     required: true
+  no-cache:
+    description: Do not use cache when building the image (default false)
+    required: false
+    default: "false"
   is-release:
     description: if this build is a production release
+    required: false
+    default: "false"
+  pull:
+    description: Always attempt to pull all referenced images (default false)
     required: false
     default: "false"
   push:
@@ -153,11 +161,13 @@ runs:
         cache-to: type=gha,mode=max
         context: ${{ inputs.context }}
         file: ${{ inputs.working-directory }}/${{ inputs.dockerfile }}
+        labels: ${{ steps.metadata.outputs.labels }}
         load: ${{ inputs.push != 'true' && !contains(inputs.platforms, ',') }}
+        no-cache: ${{ inputs.no-cache == 'true' }}
+        pull: ${{ inputs.pull == 'true' }}
         push: ${{ inputs.push == 'true' }}
         platforms: ${{ inputs.platforms }}
         tags: ${{ steps.metadata.outputs.tags }}
-        labels: ${{ steps.metadata.outputs.labels }}
 
     - name: Output image tag
       id: outputs
