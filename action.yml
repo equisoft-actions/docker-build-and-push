@@ -106,7 +106,7 @@ runs:
         version: ${{ inputs.version }}
 
     - name: Configure AWS Credentials
-      uses: aws-actions/configure-aws-credentials@v3
+      uses: aws-actions/configure-aws-credentials@v4
       if: steps.context.outputs.is-ecr == 'true'
       with:
         aws-access-key-id: ${{ steps.context.outputs.has-role != 'true' && inputs.aws-access-key-id || '' }}
@@ -120,16 +120,16 @@ runs:
       if: steps.context.outputs.is-ecr == 'true'
 
     - name: Set up QEMU
-      uses: docker/setup-qemu-action@v2
+      uses: docker/setup-qemu-action@v3
       if: inputs.use-emulation == 'true'
 
     - name: Set up Local Docker Buildx
-      uses: docker/setup-buildx-action@v2
+      uses: docker/setup-buildx-action@v3
       if: inputs.use-emulation == 'true'
 
     - name: Set up k8s Docker Buildx
       id: k8s-buildx
-      uses: docker/setup-buildx-action@v2
+      uses: docker/setup-buildx-action@v3
       if: inputs.use-emulation == 'false'
       with:
         driver: kubernetes
@@ -154,7 +154,7 @@ runs:
 
     - name: Build and push
       id: build-push
-      uses: docker/build-push-action@v4
+      uses: docker/build-push-action@v5
       with:
         build-args: ${{ inputs.build-args }}
         cache-from: type=gha
