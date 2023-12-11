@@ -164,6 +164,7 @@ runs:
         labels: ${{ steps.metadata.outputs.labels }}
         load: ${{ inputs.push != 'true' && !contains(inputs.platforms, ',') }}
         no-cache: ${{ inputs.no-cache == 'true' }}
+        provenance: false
         pull: ${{ inputs.pull == 'true' }}
         push: ${{ inputs.push == 'true' }}
         platforms: ${{ inputs.platforms }}
