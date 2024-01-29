@@ -156,14 +156,15 @@ runs:
           requests.memory=4Gi,\
           limits.cpu=4,\
           limits.memory=6Gi,\
-          nodeselector=kubernetes.io/arch=arm64,\
+          nodeselector=kubernetes.io/arch=$,\
           \"tolerations=key=dedicated,value=build-arm64,operator=Equal,effect=NoSchedule\",\
           rootless=true"
 
           docker buildx create --append \
-                  --name test\
-                  --node test-$arch \
-                  --driver=kubernetes --platform linux/arm64 \
+                  --name ${{ steps.k8s-buildx.outputs.name }}\
+                  --node ${{ steps.k8s-buildx.outputs.name }}-$arch\
+                  --driver=kubernetes\
+                  --platform $platform\
                   --driver-opt "$driverOpt"
         done
 
