@@ -150,18 +150,18 @@ runs:
         for row in $(echo ${{ inputs.platforms }} | jq -R -c 'split(",") | del(.[] | select(. == "linux/amd64")) | .[]'); do
           platform=$(echo $row | jq -r .)
           arch=${platform##*/}
-          docker buildx create --append 
-                  --name ${{ steps.k8s-buildx.outputs.name }} 
-                  --node ${{ steps.k8s-buildx.outputs.name }}-$arch 
-                  --driver=kubernetes --platform $platform 
-                  --driver-opt 
-                      "namespace=actions-runner-docker,
-                      requests.cpu=1,
-                      requests.memory=${{ inputs.request-memory }},
-                      limits.cpu=4,
-                      limits.memory=${{ inputs.max-memory }},
-                      nodeselector=kubernetes.io/arch=${arch},
-                      tolerations=key=dedicated,value=build-${arch};operator=Equal,effect=NoSchedule,
+          docker buildx create --append \
+                  --name ${{ steps.k8s-buildx.outputs.name }} \
+                  --node ${{ steps.k8s-buildx.outputs.name }}-$arch \
+                  --driver=kubernetes --platform $platform \
+                  --driver-opt \
+                      "namespace=actions-runner-docker, \
+                      requests.cpu=1, \
+                      requests.memory=${{ inputs.request-memory }}, \
+                      limits.cpu=4, \
+                      limits.memory=${{ inputs.max-memory }}, \
+                      nodeselector=kubernetes.io/arch=${arch}, \ 
+                      tolerations=key=dedicated,value=build-${arch};operator=Equal,effect=NoSchedule, \ 
                       rootless=true"
         done
 
