@@ -153,11 +153,11 @@ runs:
 
           driverOpt="namespace=actions-runner-docker,\
           requests.cpu=1,\
-          requests.memory=4Gi,\
+          requests.memory=${{ inputs.request-memory }},\
           limits.cpu=4,\
-          limits.memory=6Gi,\
-          nodeselector=kubernetes.io/arch=$,\
-          \"tolerations=key=dedicated,value=build-arm64,operator=Equal,effect=NoSchedule\",\
+          limits.memory=${{ inputs.max-memory }},\
+          nodeselector=kubernetes.io/arch=${arch},\
+          \"tolerations=key=dedicated,value=build-${arch},operator=Equal,effect=NoSchedule\",\
           rootless=true"
 
           docker buildx create --append \
