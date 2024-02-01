@@ -140,7 +140,7 @@ runs:
           requests.memory=${{ inputs.request-memory }}
           limits.memory=${{ inputs.max-memory }}
           nodeselector=kubernetes.io/arch=amd64
-          tolerations=key=dedicated,value=build-amd64;operator=Equal,effect=NoSchedule
+          \"tolerations=key=dedicated,value=build-amd64,operator=Equal,effect=NoSchedule\"
           rootless=true
 
     - name: Set up k8s Docker Buildx
