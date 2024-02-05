@@ -42,7 +42,7 @@ inputs:
   max-memory:
     description: Max memory for k8s
     required: true
-    default: '10Gi'
+    default: '16Gi'
   name:
     description: A simple name for this image
     required: true
