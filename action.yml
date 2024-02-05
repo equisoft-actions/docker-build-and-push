@@ -27,14 +27,22 @@ inputs:
     description: Relative Dockerfile under `working-directory`.
     required: true
     default: Dockerfile
+  request-cpu:
+    description: Requested cpu for k8s
+    required: false
+    default: '4'
+  max-cpu:
+    description: Max cpu for k8s
+    required: false
+    default: '4'
   request-memory:
     description: Requested memory for k8s
     required: true
-    default: '4Gi'
+    default: '8Gi'
   max-memory:
     description: Max memory for k8s
     required: true
-    default: '6Gi'
+    default: '16Gi'
   name:
     description: A simple name for this image
     required: true
@@ -135,8 +143,8 @@ runs:
         driver: kubernetes
         driver-opts: |
           namespace=actions-runner-docker
-          requests.cpu=1
-          limits.cpu=4
+          requests.cpu=${{ inputs.request-cpu }}
+          limits.cpu=${{ inputs.max-cpu }}
           requests.memory=${{ inputs.request-memory }}
           limits.memory=${{ inputs.max-memory }}
           nodeselector=nodegroup-name=build-amd
@@ -155,7 +163,7 @@ runs:
                   --node ${{ steps.k8s-buildx.outputs.name }}-$arch\
                   --driver=kubernetes\
                   --platform $platform\
-                  --driver-opt "namespace=actions-runner-docker,requests.cpu=1,requests.memory=${{ inputs.request-memory }},limits.cpu=4,limits.memory=${{ inputs.max-memory }},nodeselector=kubernetes.io/arch=${arch},\"tolerations=key=dedicated,value=build-${arch},operator=Equal,effect=NoSchedule\",rootless=true"
+                  --driver-opt "namespace=actions-runner-docker,requests.cpu=${{ inputs.request-cpu }},requests.memory=${{ inputs.request-memory }},limits.cpu=${{ inputs.max-cpu }},limits.memory=${{ inputs.max-memory }},nodeselector=kubernetes.io/arch=${arch},\"tolerations=key=dedicated,value=build-${arch},operator=Equal,effect=NoSchedule\",rootless=true"
         done
 
     - name: Build and push
