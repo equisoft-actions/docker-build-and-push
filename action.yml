@@ -170,7 +170,7 @@ runs:
       id: build-push
       uses: docker/build-push-action@v5
       with:
-        annotations: ${{ steps.metadata.outputs.labels }}
+        annotations: ${{ steps.metadata.outputs.annotations }}
         build-args: ${{ inputs.build-args }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
