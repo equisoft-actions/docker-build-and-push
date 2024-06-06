@@ -147,7 +147,7 @@ runs:
           limits.cpu=${{ inputs.max-cpu }}
           requests.memory=${{ inputs.request-memory }}
           limits.memory=${{ inputs.max-memory }}
-          nodeselector=nodegroup-name=build-amd
+          nodeselector=eks/nodegroup=github-build-amd64
           tolerations=operator=Exists
           rootless=true
 
@@ -163,7 +163,7 @@ runs:
                   --node ${{ steps.k8s-buildx.outputs.name }}-$arch\
                   --driver=kubernetes\
                   --platform $platform\
-                  --driver-opt "namespace=actions-runner-docker,requests.cpu=${{ inputs.request-cpu }},requests.memory=${{ inputs.request-memory }},limits.cpu=${{ inputs.max-cpu }},limits.memory=${{ inputs.max-memory }},nodeselector=kubernetes.io/arch=${arch},\"tolerations=key=dedicated,value=build-${arch},operator=Equal,effect=NoSchedule\",rootless=true"
+                  --driver-opt "namespace=actions-runner-docker,requests.cpu=${{ inputs.request-cpu }},requests.memory=${{ inputs.request-memory }},limits.cpu=${{ inputs.max-cpu }},limits.memory=${{ inputs.max-memory }},nodeselector=eks/nodegroup=github-build-{arch},\"tolerations=key=dedicated,value=build-${arch},operator=Equal,effect=NoSchedule\",rootless=true"
         done
 
     - name: Build and push
