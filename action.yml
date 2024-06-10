@@ -149,6 +149,7 @@ runs:
           limits.memory=${{ inputs.max-memory }}
           nodeselector=eks/nodegroup=github-build-amd64
           tolerations=operator=Exists
+          annotations=karpenter.sh/do-not-disrupt=true
           rootless=true
 
     - name: Set up k8s Docker Buildx
@@ -163,7 +164,7 @@ runs:
                   --node ${{ steps.k8s-buildx.outputs.name }}-$arch\
                   --driver=kubernetes\
                   --platform $platform\
-                  --driver-opt "namespace=actions-runner-docker,requests.cpu=${{ inputs.request-cpu }},requests.memory=${{ inputs.request-memory }},limits.cpu=${{ inputs.max-cpu }},limits.memory=${{ inputs.max-memory }},nodeselector=eks/nodegroup=github-build-${arch},\"tolerations=key=dedicated,value=build-${arch},operator=Equal,effect=NoSchedule\",rootless=true"
+                  --driver-opt "namespace=actions-runner-docker,requests.cpu=${{ inputs.request-cpu }},requests.memory=${{ inputs.request-memory }},limits.cpu=${{ inputs.max-cpu }},limits.memory=${{ inputs.max-memory }},nodeselector=eks/nodegroup=github-build-${arch},\"tolerations=key=dedicated,value=build-${arch},operator=Equal,effect=NoSchedule\",annotations=karpenter.sh/do-not-disrupt=true,rootless=true"
         done
 
     - name: Build and push
