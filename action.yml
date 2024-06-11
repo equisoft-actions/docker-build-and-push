@@ -173,8 +173,6 @@ runs:
       with:
         annotations: ${{ steps.metadata.outputs.annotations }}
         build-args: ${{ inputs.build-args }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
         context: ${{ inputs.context }}
         file: ${{ inputs.working-directory }}/${{ inputs.dockerfile }}
         labels: ${{ steps.metadata.outputs.labels }}
