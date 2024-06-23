@@ -169,7 +169,7 @@ runs:
 
     - name: Build and push
       id: build-push
-      uses: docker/build-push-action@v5
+      uses: docker/build-push-action@v6
       with:
         annotations: ${{ steps.metadata.outputs.annotations }}
         build-args: ${{ inputs.build-args }}
