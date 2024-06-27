@@ -39,6 +39,14 @@ inputs:
     description: Max cpu for k8s
     required: false
     default: '4'
+  request-storage:
+    description: Requested storage for k8s
+    required: true
+    default: '100Gi'
+  max-storage:
+    description: Max storage for k8s
+    required: true
+    default: '128Gi'
   request-memory:
     description: Requested memory for k8s
     required: true
@@ -151,6 +159,8 @@ runs:
           limits.cpu=${{ inputs.max-cpu }}
           requests.memory=${{ inputs.request-memory }}
           limits.memory=${{ inputs.max-memory }}
+          requests.ephemeral-storage=${{ inputs.request-storage }}
+          limits.ephemeral-storage=${{ inputs.max-storage }}
           nodeselector=eks/nodegroup=github-build-amd64
           tolerations=operator=Exists
           annotations=karpenter.sh/do-not-disrupt=true
@@ -168,7 +178,7 @@ runs:
                   --node ${{ steps.k8s-buildx.outputs.name }}-$arch\
                   --driver=kubernetes\
                   --platform $platform\
-                  --driver-opt "namespace=actions-runner-docker,requests.cpu=${{ inputs.request-cpu }},requests.memory=${{ inputs.request-memory }},limits.cpu=${{ inputs.max-cpu }},limits.memory=${{ inputs.max-memory }},nodeselector=eks/nodegroup=github-build-${arch},\"tolerations=key=dedicated,value=build-${arch},operator=Equal,effect=NoSchedule\",annotations=karpenter.sh/do-not-disrupt=true,rootless=true"
+                  --driver-opt "namespace=actions-runner-docker,requests.cpu=${{ inputs.request-cpu }},requests.memory=${{ inputs.request-memory }}requests.ephemeral-storage=${{ inputs.request-storage }},limits.cpu=${{ inputs.max-cpu }},limits.ephemeral-storage=${{ inputs.max-storage }},limits.memory=${{ inputs.max-memory }},nodeselector=eks/nodegroup=github-build-${arch},\"tolerations=key=dedicated,value=build-${arch},operator=Equal,effect=NoSchedule\",annotations=karpenter.sh/do-not-disrupt=true,rootless=true"
         done
 
     - name: Build and push
