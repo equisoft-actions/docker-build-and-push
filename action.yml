@@ -114,6 +114,7 @@ runs:
       with:
         title: ${{ inputs.name }}
         image-name: ${{ inputs.registry }}/${{ inputs.name }}
+        platforms: ${{ inputs.platforms }}
         release: ${{ inputs.is-release }}
         version: ${{ inputs.version }}
 
