@@ -158,6 +158,8 @@ runs:
           nodeselector=eks/nodegroup=github-build-amd64
           tolerations=operator=Exists
           annotations=karpenter.sh/do-not-disrupt=true
+          labels=build=true
+          podAntiAffinity=requiredDuringSchedulingIgnoredDuringExecution:topologyKey=kubernetes.io/hostname,labelSelector=build=true
           rootless=true
 
     - name: Set up k8s Docker Buildx
@@ -167,12 +169,26 @@ runs:
         for row in $(echo ${{ inputs.platforms }} | jq -R -c 'split(",") | del(.[] | select(. == "linux/amd64")) | .[]'); do
           platform=$(echo $row | jq -r .)
           arch=${platform##*/}
+
+          # Build driver options
+          driver_opts="namespace=actions-runner-docker"
+          driver_opts+=",requests.cpu=${{ inputs.request-cpu }}"
+          driver_opts+=",requests.memory=${{ inputs.request-memory }}"
+          driver_opts+=",limits.cpu=${{ inputs.max-cpu }}"
+          driver_opts+=",limits.memory=${{ inputs.max-memory }}"
+          driver_opts+=",nodeselector=eks/nodegroup=github-build-${arch}"
+          driver_opts+=",\"tolerations=key=dedicated,value=build-${arch},operator=Equal,effect=NoSchedule\""
+          driver_opts+=",annotations=karpenter.sh/do-not-disrupt=true"
+          driver_opts+=",labels=build=true"
+          driver_opts+=",podAntiAffinity=requiredDuringSchedulingIgnoredDuringExecution:topologyKey=kubernetes.io/hostname\\,labelSelector=build=true"
+          driver_opts+=",rootless=true"
+
           docker buildx create --append \
-                  --name ${{ steps.k8s-buildx.outputs.name }}\
-                  --node ${{ steps.k8s-buildx.outputs.name }}-$arch\
-                  --driver=kubernetes\
-                  --platform $platform\
-                  --driver-opt "namespace=actions-runner-docker,requests.cpu=${{ inputs.request-cpu }},requests.memory=${{ inputs.request-memory }},limits.cpu=${{ inputs.max-cpu }},limits.memory=${{ inputs.max-memory }},nodeselector=eks/nodegroup=github-build-${arch},\"tolerations=key=dedicated,value=build-${arch},operator=Equal,effect=NoSchedule\",annotations=karpenter.sh/do-not-disrupt=true,rootless=true"
+                  --name ${{ steps.k8s-buildx.outputs.name }} \
+                  --node ${{ steps.k8s-buildx.outputs.name }}-$arch \
+                  --driver=kubernetes \
+                  --platform $platform \
+                  --driver-opt "$driver_opts"
         done
 
     - name: Build and push
