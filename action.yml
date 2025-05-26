@@ -159,7 +159,7 @@ runs:
           tolerations=operator=Exists
           annotations=karpenter.sh/do-not-disrupt=true
           labels=build=true
-          podAntiAffinity="requiredDuringSchedulingIgnoredDuringExecution:topologyKey=kubernetes.io/hostname,labelSelector=build=true"
+          "podAntiAffinity=requiredDuringSchedulingIgnoredDuringExecution:topologyKey=kubernetes.io/hostname,labelSelector=build=true"
           rootless=true
 
     - name: Set up k8s Docker Buildx
@@ -180,7 +180,7 @@ runs:
           driver_opts+=",\"tolerations=key=dedicated,value=build-${arch},operator=Equal,effect=NoSchedule\""
           driver_opts+=",annotations=karpenter.sh/do-not-disrupt=true"
           driver_opts+=",labels=build=true"
-          driver_opts+=",podAntiAffinity=\"requiredDuringSchedulingIgnoredDuringExecution:topologyKey=kubernetes.io/hostname,labelSelector=build=true\""
+          driver_opts+=",\"podAntiAffinity=requiredDuringSchedulingIgnoredDuringExecution:topologyKey=kubernetes.io/hostname,labelSelector=build=true\""
           driver_opts+=",rootless=true"
 
           docker buildx create --append \
