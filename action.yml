@@ -156,7 +156,7 @@ runs:
           requests.memory=${{ inputs.request-memory }}
           limits.memory=${{ inputs.max-memory }}
           nodeselector=eks/nodegroup=github-build-amd64
-          tolerations=operator=Exists
+          tolerations=key=dedicated,value=build-amd64,operator=Equal,effect=NoSchedule
           annotations=karpenter.sh/do-not-disrupt=true
           labels=build=true
           rootless=true
