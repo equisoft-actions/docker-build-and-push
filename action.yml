@@ -67,8 +67,8 @@ inputs:
     required: true
     default: "false"
   platforms:
-    description: "List of platforms to build"
-    required: true
+    description: "DEPRECATED: List of platforms to build. Use target-architecture instead."
+    required: false
     default: "linux/amd64,linux/arm64"
   role-to-assume:
     description: Role to assume that has write access to the registry.
@@ -77,8 +77,8 @@ inputs:
     description: Session name to use when assuming the role.
     required: false
   use-emulation:
-    description: "Set to false to use k8s cluster"
-    required: true
+    description: "DEPRECATED: Set to false to use k8s cluster. Use target-architecture instead."
+    required: false
     default: "true"
   version:
     description: The SemVer compatible version for this image, without prefixes.
@@ -89,6 +89,13 @@ inputs:
       This also acts as the context given to the docker build command.
     required: false
     default: "."
+  target-architecture:
+    description: "Target architecture for this build (amd64 or arm64). Leave empty for legacy mode."
+    required: false
+  create-manifest:
+    description: "Create multi-arch manifest (only set to true for the last architecture build)"
+    required: false
+    default: "false"
 
 outputs:
   image-id:
@@ -131,6 +138,18 @@ runs:
       uses: aws-actions/amazon-ecr-login@v2
       if: steps.context.outputs.is-ecr == 'true'
 
+    - name: Determine build mode
+      id: build-mode
+      shell: bash
+      run: |
+        if [[ -n "${{ inputs.target-architecture }}" ]]; then
+          echo "mode=single-arch" >> $GITHUB_OUTPUT
+          echo "Using new single-architecture build mode"
+        else
+          echo "mode=legacy-buildx" >> $GITHUB_OUTPUT
+          echo "Using legacy buildx mode"
+        fi
+
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v3
       if: inputs.use-emulation == 'true'
@@ -143,77 +162,61 @@ runs:
       uses: docker/setup-buildx-action@v3
       if: inputs.use-emulation == 'true'
 
-    - name: Set up k8s Docker Buildx
-      id: k8s-buildx
-      uses: docker/setup-buildx-action@v3
-      if: inputs.use-emulation == 'false'
-      with:
-        driver: kubernetes
-        driver-opts: |
-          namespace=actions-runner-docker
-          requests.cpu=${{ inputs.request-cpu }}
-          limits.cpu=${{ inputs.max-cpu }}
-          requests.memory=${{ inputs.request-memory }}
-          limits.memory=${{ inputs.max-memory }}
-          nodeselector=eks/nodegroup=github-build-amd64
-          "tolerations=key=dedicated,value=build-amd64,operator=Equal,effect=NoSchedule"
-          annotations=karpenter.sh/do-not-disrupt=true
-          labels=build=true
-          rootless=true
-
-    - name: Set up k8s Docker Buildx
-      shell: bash
-      if: inputs.use-emulation == 'false'
-      run: |
-        for row in $(echo ${{ inputs.platforms }} | jq -R -c 'split(",") | del(.[] | select(. == "linux/amd64")) | .[]'); do
-          platform=$(echo $row | jq -r .)
-          arch=${platform##*/}
-
-          # Build driver options
-          driver_opts="namespace=actions-runner-docker"
-          driver_opts+=",requests.cpu=${{ inputs.request-cpu }}"
-          driver_opts+=",requests.memory=${{ inputs.request-memory }}"
-          driver_opts+=",limits.cpu=${{ inputs.max-cpu }}"
-          driver_opts+=",limits.memory=${{ inputs.max-memory }}"
-          driver_opts+=",nodeselector=eks/nodegroup=github-build-${arch}"
-          driver_opts+=",\"tolerations=key=dedicated,value=build-${arch},operator=Equal,effect=NoSchedule\""
-          driver_opts+=",annotations=karpenter.sh/do-not-disrupt=true"
-          driver_opts+=",labels=build=true"
-          driver_opts+=",rootless=true"
-
-          docker buildx create --append \
-                  --name ${{ steps.k8s-buildx.outputs.name }} \
-                  --node ${{ steps.k8s-buildx.outputs.name }}-$arch \
-                  --driver=kubernetes \
-                  --platform $platform \
-                  --driver-opt "$driver_opts"
-        done
-
-    - name: Build and push
-      id: build-push
+    # Legacy buildx build
+    - name: Build and push with buildx (legacy)
+      id: build-legacy
+      if: steps.build-mode.outputs.mode == 'legacy-buildx'
       uses: docker/build-push-action@v6
-      env:
-        DOCKER_BUILD_SUMMARY: ${{ inputs.build-summary == 'true' || 'false' }}
       with:
         annotations: ${{ steps.metadata.outputs.annotations }}
-        build-args: |
-          ${{ inputs.build-args }}
-          BUILDKIT_MULTI_PLATFORM=1
+        build-args: ${{ inputs.build-args }}
         context: ${{ inputs.context }}
         file: ${{ inputs.working-directory }}/${{ inputs.dockerfile }}
         labels: ${{ steps.metadata.outputs.labels }}
-        load: ${{ inputs.push != 'true' && !contains(inputs.platforms, ',') }}
         no-cache: ${{ inputs.no-cache == 'true' }}
-        provenance: false
         pull: ${{ inputs.pull == 'true' }}
         push: ${{ inputs.push == 'true' }}
         platforms: ${{ inputs.platforms }}
         tags: ${{ steps.metadata.outputs.tags }}
+        provenance: false
+
+    - name: Build and push architecture-specific image
+      id: build
+      if: steps.build-mode.outputs.mode == 'single-arch'
+      uses: docker/build-push-action@v6
+      with:
+        annotations: ${{ steps.metadata.outputs.annotations }}
+        build-args: ${{ inputs.build-args }}
+        context: ${{ inputs.context }}
+        file: ${{ inputs.working-directory }}/${{ inputs.dockerfile }}
+        labels: ${{ steps.metadata.outputs.labels }}
+        no-cache: ${{ inputs.no-cache == 'true' }}
+        pull: ${{ inputs.pull == 'true' }}
+        push: ${{ inputs.push == 'true' }}
+        platforms: linux/${{ inputs.target-architecture }}
+        tags: ${{ steps.metadata.outputs.tags }}-${{ inputs.target-architecture }}
+        provenance: false
+
+    - name: Create and push manifest
+      if: steps.build-mode.outputs.mode == 'single-arch' && inputs.push == 'true' && inputs.create-manifest == 'true'
+      shell: bash
+      run: |
+        # Create manifest list
+        docker manifest create ${{ steps.metadata.outputs.tags }} \
+          ${{ steps.metadata.outputs.tags }}-amd64 \
+          ${{ steps.metadata.outputs.tags }}-arm64
+        
+        # Push manifest
+        docker manifest push ${{ steps.metadata.outputs.tags }}
 
     - name: Output image tag
       id: outputs
       shell: bash
       run: |
-        IMAGE_TAG=$(cut -d',' -f1 <<<'${{ steps.metadata.outputs.tags }}')
+        if [[ "${{ steps.build-mode.outputs.mode }}" == "legacy-buildx" ]]; then
+          IMAGE_TAG=$(cut -d',' -f1 <<<'${{ steps.metadata.outputs.tags }}')
+        else
+          IMAGE_TAG=$(cut -d',' -f1 <<<'${{ steps.metadata.outputs.tags }}-${{ inputs.target-architecture }}')
+        fi
         IMAGE_VERSION=$(cut -d':' -f2 <<<"${IMAGE_TAG}")
         echo "image-version=${IMAGE_VERSION}" >> $GITHUB_OUTPUT
