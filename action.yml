@@ -185,7 +185,8 @@ runs:
       if: steps.build-mode.outputs.mode == 'single-arch'
       uses: docker/build-push-action@v6
       with:
-        annotations: ${{ steps.metadata.outputs.annotations }}
+        # Remove annotations for single-arch builds
+        # annotations: ${{ steps.metadata.outputs.annotations }}
         build-args: ${{ inputs.build-args }}
         context: ${{ inputs.context }}
         file: ${{ inputs.working-directory }}/${{ inputs.dockerfile }}
