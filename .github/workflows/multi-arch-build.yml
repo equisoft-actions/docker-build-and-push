@@ -96,6 +96,7 @@ jobs:
             runner-label: github-build-arm64
     outputs:
       image-version: ${{ steps.build.outputs.image-version }}
+      tags: ${{ steps.build.outputs.tags }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -137,17 +138,27 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
         if: inputs.aws-region != ''
 
+      - name: Debug manifest creation
+        shell: bash
+        run: |
+          echo "Tags from build job: ${{ needs.build.outputs.tags }}"
+          echo "Will create manifests by combining:"
+          echo "  - {tag}-amd64"
+          echo "  - {tag}-arm64"
+          echo "  -> {tag} (multi-arch manifest)"
+
       - name: Create and push manifest
         shell: bash
         run: |
-          REGISTRY="${{ inputs.registry }}"
-          IMAGE_NAME="${{ inputs.name }}"
-          VERSION="${{ inputs.version }}"
+          # Get the original tags from the build job (like pr-24, edge, main, etc.)
+          TAGS="${{ needs.build.outputs.tags }}"
           
-          # Create manifest list
-          docker manifest create ${REGISTRY}/${IMAGE_NAME}:${VERSION} \
-            ${REGISTRY}/${IMAGE_NAME}:${VERSION}-amd64 \
-            ${REGISTRY}/${IMAGE_NAME}:${VERSION}-arm64
+          echo "Creating manifest for tags: $TAGS"
+          
+          # Create manifest list using the original action pattern
+          docker manifest create $TAGS \
+            $TAGS-amd64 \
+            $TAGS-arm64
           
           # Push manifest
-          docker manifest push ${REGISTRY}/${IMAGE_NAME}:${VERSION}
+          docker manifest push $TAGS
