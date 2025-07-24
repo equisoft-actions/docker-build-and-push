@@ -92,15 +92,11 @@ inputs:
   target-architecture:
     description: "Target architecture for this build (amd64 or arm64). Leave empty for legacy mode."
     required: false
-  create-manifest:
-    description: "Create multi-arch manifest (only set to true for the last architecture build)"
-    required: false
-    default: "false"
 
 outputs:
   image-id:
     description: Image ID built by this action
-    value: ${{ steps.build-push.outputs.imageid }}
+    value: ${{ steps.build.outputs.imageid || steps.build-legacy.outputs.imageid }}
   image-version:
     description: Image version built by this action
     value: ${{ steps.outputs.outputs.image-version }}
@@ -197,18 +193,6 @@ runs:
         platforms: linux/${{ inputs.target-architecture }}
         tags: ${{ steps.metadata.outputs.tags }}-${{ inputs.target-architecture }}
         provenance: false
-
-    - name: Create and push manifest
-      if: steps.build-mode.outputs.mode == 'single-arch' && inputs.push == 'true' && inputs.create-manifest == 'true'
-      shell: bash
-      run: |
-        # Create manifest list
-        docker manifest create ${{ steps.metadata.outputs.tags }} \
-          ${{ steps.metadata.outputs.tags }}-amd64 \
-          ${{ steps.metadata.outputs.tags }}-arm64
-        
-        # Push manifest
-        docker manifest push ${{ steps.metadata.outputs.tags }}
 
     - name: Output image tag
       id: outputs
