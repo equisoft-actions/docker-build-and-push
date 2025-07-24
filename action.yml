@@ -158,6 +158,26 @@ runs:
       uses: docker/setup-buildx-action@v3
       if: inputs.use-emulation == 'true'
 
+    # Set up buildx for single-arch builds (new mode)
+    - name: Set up Docker Buildx for single-arch
+      uses: docker/setup-buildx-action@v3
+      if: steps.build-mode.outputs.mode == 'single-arch'
+
+    # Set up Kubernetes buildx for legacy mode when not using emulation
+    - name: Set up Kubernetes Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      if: steps.build-mode.outputs.mode == 'legacy-buildx' && inputs.use-emulation == 'false'
+      with:
+        driver: kubernetes
+        driver-opts: |
+          namespace=actions-runner-docker
+          nodeselector=eks/nodegroup=github-build-amd64
+          "tolerations=key=dedicated,value=build-amd64,operator=Equal,effect=NoSchedule"
+          requests.cpu=${{ inputs.request-cpu }}
+          requests.memory=${{ inputs.request-memory }}
+          limits.cpu=${{ inputs.max-cpu }}
+          limits.memory=${{ inputs.max-memory }}
+
     # Legacy buildx build
     - name: Build and push with buildx (legacy)
       id: build-legacy
