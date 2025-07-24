@@ -86,7 +86,7 @@ on:
 
 jobs:
   build:
-    runs-on: ${{ matrix.arch == 'amd64' && inputs.runner-amd64 || inputs.runner-arm64 }}
+    runs-on: [ self-hosted, "${{ matrix.arch }}" ]
     strategy:
       matrix:
         arch: [amd64, arm64]
