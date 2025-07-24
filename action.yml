@@ -28,7 +28,7 @@ inputs:
     required: false
     default: "."
   dockerfile:
-    description: Relative Dockerfile under `working-directory`.
+    description: Path to Dockerfile relative to context (e.g., 'Dockerfile' or 'docker/Dockerfile')
     required: true
     default: Dockerfile
   request-cpu:
@@ -197,11 +197,9 @@ runs:
       if: steps.build-mode.outputs.mode == 'single-arch'
       uses: docker/build-push-action@v6
       with:
-        # Remove annotations for single-arch builds
-        # annotations: ${{ steps.metadata.outputs.annotations }}
         build-args: ${{ inputs.build-args }}
         context: ${{ inputs.context }}
-        file: ${{ inputs.working-directory }}/${{ inputs.dockerfile }}
+        file: ${{ inputs.dockerfile }}  # Use dockerfile path directly, don't combine with working-directory
         labels: ${{ steps.metadata.outputs.labels }}
         no-cache: ${{ inputs.no-cache == 'true' }}
         pull: ${{ inputs.pull == 'true' }}
