@@ -79,7 +79,7 @@ inputs:
   use-emulation:
     description: "DEPRECATED: Set to false to use k8s cluster. Use target-architecture instead."
     required: false
-    default: "true"
+    default: "false"
   version:
     description: The SemVer compatible version for this image, without prefixes.
     required: true
