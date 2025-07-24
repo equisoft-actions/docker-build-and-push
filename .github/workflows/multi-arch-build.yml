@@ -98,7 +98,7 @@ jobs:
 
       - name: Build and push ${{ matrix.arch }}
         id: build
-        uses: ./  # Use the local action
+        uses: equisoft-actions/docker-build-and-push@DOPS-5820/retire-buildx
         with:
           registry: ${{ inputs.registry }}
           aws-region: ${{ inputs.aws-region }}
