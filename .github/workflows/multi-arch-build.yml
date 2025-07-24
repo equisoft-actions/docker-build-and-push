@@ -86,10 +86,14 @@ on:
 
 jobs:
   build:
-    runs-on: [ self-hosted, "${{ matrix.arch }}" ]
+    runs-on: [ self-hosted, "${{ matrix.runner-label }}" ]
     strategy:
       matrix:
-        arch: [github-build-amd64, github-build-arm64]
+        include:
+          - arch: amd64
+            runner-label: github-build-amd64
+          - arch: arm64
+            runner-label: github-build-arm64
     outputs:
       image-version: ${{ steps.build.outputs.image-version }}
     steps:
@@ -114,7 +118,7 @@ jobs:
           role-session-name: ${{ inputs.role-session-name }}-${{ matrix.arch }}
           version: ${{ inputs.version }}
           working-directory: ${{ inputs.working-directory }}
-          target-architecture: ${{ matrix.arch }}
+          target-architecture: ${{ matrix.arch }}  # Now this will be "amd64" or "arm64"
 
   create-manifest:
     runs-on: ubuntu-latest
