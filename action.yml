@@ -100,9 +100,6 @@ outputs:
   image-version:
     description: Image version built by this action
     value: ${{ steps.outputs.outputs.image-version }}
-  tags:
-    description: Tags built by this action (original tags, without architecture suffix)
-    value: ${{ steps.metadata.outputs.tags }}
 
 runs:
   using: composite
