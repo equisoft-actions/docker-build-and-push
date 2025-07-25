@@ -117,7 +117,7 @@ runs:
       uses: docker/build-push-action@v6
       with:
         build-args: ${{ inputs.build-args }}
-        context: ${{ inputs.working-directory }}/${{ inputs.context }}
+        context: ${{ inputs.working-directory }}
         file: ${{ inputs.working-directory }}/${{ inputs.dockerfile }}
         labels: ${{ steps.metadata.outputs.labels }}
         no-cache: ${{ inputs.no-cache == 'true' }}
