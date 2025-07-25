@@ -114,12 +114,11 @@ runs:
 
     - name: Build and push architecture-specific image
       id: build
-      working-directory: ${{ inputs.working-directory }}
       uses: docker/build-push-action@v6
       with:
         build-args: ${{ inputs.build-args }}
-        context: ${{ inputs.context }}
-        file: ${{ inputs.dockerfile }}
+        context: ${{ inputs.working-directory }}/${{ inputs.context }}
+        file: ${{ inputs.working-directory }}/${{ inputs.dockerfile }}
         labels: ${{ steps.metadata.outputs.labels }}
         no-cache: ${{ inputs.no-cache == 'true' }}
         pull: ${{ inputs.pull == 'true' }}
