@@ -19,34 +19,14 @@ inputs:
     description: Arguments passed to the build command.
     required: false
     default: ""
-  build-summary:
-    description: Show the build summary.
-    required: false
-    default: "false"
   context:
     description: Relative path under $GITHUB_WORKSPACE for the Docker context.
     required: false
     default: "."
   dockerfile:
-    description: Relative Dockerfile under `working-directory`.
+    description: Path to Dockerfile relative to context (e.g., 'Dockerfile' or 'docker/Dockerfile')
     required: true
     default: Dockerfile
-  request-cpu:
-    description: Requested cpu for k8s
-    required: false
-    default: '4'
-  max-cpu:
-    description: Max cpu for k8s
-    required: false
-    default: '4'
-  request-memory:
-    description: Requested memory for k8s
-    required: true
-    default: '8Gi'
-  max-memory:
-    description: Max memory for k8s
-    required: true
-    default: '16Gi'
   name:
     description: A simple name for this image
     required: true
@@ -66,20 +46,12 @@ inputs:
     description: "`true` to push the built image. `false` otherwise (default)."
     required: true
     default: "false"
-  platforms:
-    description: "List of platforms to build"
-    required: true
-    default: "linux/amd64,linux/arm64"
   role-to-assume:
     description: Role to assume that has write access to the registry.
     required: false
   role-session-name:
     description: Session name to use when assuming the role.
     required: false
-  use-emulation:
-    description: "Set to false to use k8s cluster"
-    required: true
-    default: "true"
   version:
     description: The SemVer compatible version for this image, without prefixes.
     required: true
@@ -89,14 +61,20 @@ inputs:
       This also acts as the context given to the docker build command.
     required: false
     default: "."
+  target-architecture:
+    description: "Target architecture for this build (amd64 or arm64). Leave empty for legacy mode."
+    required: false
 
 outputs:
   image-id:
     description: Image ID built by this action
-    value: ${{ steps.build-push.outputs.imageid }}
+    value: ${{ steps.build.outputs.imageid }}
   image-version:
     description: Image version built by this action
     value: ${{ steps.outputs.outputs.image-version }}
+  tags:
+    description: Tags built by this action (original tags, without architecture suffix)
+    value: ${{ steps.metadata.outputs.tags }}
 
 runs:
   using: composite
@@ -131,84 +109,23 @@ runs:
       uses: aws-actions/amazon-ecr-login@v2
       if: steps.context.outputs.is-ecr == 'true'
 
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v3
-      if: inputs.use-emulation == 'true'
-      with:
-        # see: https://github.com/tonistiigi/binfmt/issues/215
-        # see: https://github.com/docker/setup-qemu-action/issues/198
-        image: tonistiigi/binfmt:qemu-v7.0.0-28
-
-    - name: Set up Local Docker Buildx
+    - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
-      if: inputs.use-emulation == 'true'
 
-    - name: Set up k8s Docker Buildx
-      id: k8s-buildx
-      uses: docker/setup-buildx-action@v3
-      if: inputs.use-emulation == 'false'
-      with:
-        driver: kubernetes
-        driver-opts: |
-          namespace=actions-runner-docker
-          requests.cpu=${{ inputs.request-cpu }}
-          limits.cpu=${{ inputs.max-cpu }}
-          requests.memory=${{ inputs.request-memory }}
-          limits.memory=${{ inputs.max-memory }}
-          nodeselector=eks/nodegroup=github-build-amd64
-          "tolerations=key=dedicated,value=build-amd64,operator=Equal,effect=NoSchedule"
-          annotations=karpenter.sh/do-not-disrupt=true
-          labels=build=true
-          rootless=true
-
-    - name: Set up k8s Docker Buildx
-      shell: bash
-      if: inputs.use-emulation == 'false'
-      run: |
-        for row in $(echo ${{ inputs.platforms }} | jq -R -c 'split(",") | del(.[] | select(. == "linux/amd64")) | .[]'); do
-          platform=$(echo $row | jq -r .)
-          arch=${platform##*/}
-
-          # Build driver options
-          driver_opts="namespace=actions-runner-docker"
-          driver_opts+=",requests.cpu=${{ inputs.request-cpu }}"
-          driver_opts+=",requests.memory=${{ inputs.request-memory }}"
-          driver_opts+=",limits.cpu=${{ inputs.max-cpu }}"
-          driver_opts+=",limits.memory=${{ inputs.max-memory }}"
-          driver_opts+=",nodeselector=eks/nodegroup=github-build-${arch}"
-          driver_opts+=",\"tolerations=key=dedicated,value=build-${arch},operator=Equal,effect=NoSchedule\""
-          driver_opts+=",annotations=karpenter.sh/do-not-disrupt=true"
-          driver_opts+=",labels=build=true"
-          driver_opts+=",rootless=true"
-
-          docker buildx create --append \
-                  --name ${{ steps.k8s-buildx.outputs.name }} \
-                  --node ${{ steps.k8s-buildx.outputs.name }}-$arch \
-                  --driver=kubernetes \
-                  --platform $platform \
-                  --driver-opt "$driver_opts"
-        done
-
-    - name: Build and push
-      id: build-push
+    - name: Build and push architecture-specific image
+      id: build
       uses: docker/build-push-action@v6
-      env:
-        DOCKER_BUILD_SUMMARY: ${{ inputs.build-summary == 'true' || 'false' }}
       with:
-        annotations: ${{ steps.metadata.outputs.annotations }}
-        build-args: |
-          ${{ inputs.build-args }}
-          BUILDKIT_MULTI_PLATFORM=1
-        context: ${{ inputs.context }}
+        build-args: ${{ inputs.build-args }}
+        context: ${{ inputs.working-directory }}
         file: ${{ inputs.working-directory }}/${{ inputs.dockerfile }}
         labels: ${{ steps.metadata.outputs.labels }}
-        load: ${{ inputs.push != 'true' && !contains(inputs.platforms, ',') }}
         no-cache: ${{ inputs.no-cache == 'true' }}
-        provenance: false
         pull: ${{ inputs.pull == 'true' }}
         push: ${{ inputs.push == 'true' }}
-        platforms: ${{ inputs.platforms }}
+        platforms: linux/${{ inputs.target-architecture }}
         tags: ${{ steps.metadata.outputs.tags }}
+        provenance: false
 
     - name: Output image tag
       id: outputs
