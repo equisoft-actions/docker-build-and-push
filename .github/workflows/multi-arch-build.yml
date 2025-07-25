@@ -138,9 +138,19 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
         if: inputs.aws-region != ''
 
+      - name: Prepare image metadata for manifest
+        id: metadata
+        uses: equisoft-actions/docker-metadata@v1
+        with:
+          title: ${{ inputs.name }}
+          image-name: ${{ inputs.registry }}/${{ inputs.name }}
+          release: ${{ inputs.is-release }}
+          version: ${{ inputs.version }}
+
       - name: Debug manifest creation
         shell: bash
         run: |
+          echo "Tags from metadata: ${{ steps.metadata.outputs.tags }}"
           echo "Tags from build job: ${{ needs.build.outputs.tags }}"
           echo "Will create manifests by combining:"
           echo "  - {tag}-amd64"
@@ -150,8 +160,9 @@ jobs:
       - name: Create and push manifest
         shell: bash
         run: |
-          # Get the original tags from the build job (like pr-24, edge, main, etc.)
-          TAGS="${{ needs.build.outputs.tags }}"
+          # Use metadata tags (reconstructed from inputs) instead of build job outputs
+          # This avoids matrix job output issues
+          TAGS="${{ steps.metadata.outputs.tags }}"
           
           echo "Creating manifests for tags: $TAGS"
           
