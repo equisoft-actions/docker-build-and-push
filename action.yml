@@ -19,10 +19,6 @@ inputs:
     description: Arguments passed to the build command.
     required: false
     default: ""
-  build-summary:
-    description: Show the build summary.
-    required: false
-    default: "false"
   context:
     description: Relative path under $GITHUB_WORKSPACE for the Docker context.
     required: false
@@ -31,22 +27,6 @@ inputs:
     description: Path to Dockerfile relative to context (e.g., 'Dockerfile' or 'docker/Dockerfile')
     required: true
     default: Dockerfile
-  request-cpu:
-    description: Requested cpu for k8s
-    required: false
-    default: '4'
-  max-cpu:
-    description: Max cpu for k8s
-    required: false
-    default: '4'
-  request-memory:
-    description: Requested memory for k8s
-    required: true
-    default: '8Gi'
-  max-memory:
-    description: Max memory for k8s
-    required: true
-    default: '16Gi'
   name:
     description: A simple name for this image
     required: true
@@ -66,37 +46,27 @@ inputs:
     description: "`true` to push the built image. `false` otherwise (default)."
     required: true
     default: "false"
-  platforms:
-    description: "DEPRECATED: List of platforms to build. Use target-architecture instead."
-    required: false
-    default: "linux/amd64,linux/arm64"
   role-to-assume:
     description: Role to assume that has write access to the registry.
     required: false
   role-session-name:
     description: Session name to use when assuming the role.
     required: false
-  use-emulation:
-    description: "DEPRECATED: Set to false to use k8s cluster. Use target-architecture instead."
-    required: false
-    default: "false"
   version:
     description: The SemVer compatible version for this image, without prefixes.
     required: true
-  working-directory:
-    description: >-
-      Relative path under $GITHUB_WORKSPACE where the project is located.
-      This also acts as the context given to the docker build command.
-    required: false
-    default: "."
   target-architecture:
     description: "Target architecture for this build (amd64 or arm64). Leave empty for legacy mode."
     required: false
+  working-directory:
+    description: Relative path under $GITHUB_WORKSPACE where the project is located
+    required: false
+    default: "."
 
 outputs:
   image-id:
     description: Image ID built by this action
-    value: ${{ steps.build.outputs.imageid || steps.build-legacy.outputs.imageid }}
+    value: ${{ steps.build.outputs.imageid }}
   image-version:
     description: Image version built by this action
     value: ${{ steps.outputs.outputs.image-version }}
@@ -137,88 +107,57 @@ runs:
       uses: aws-actions/amazon-ecr-login@v2
       if: steps.context.outputs.is-ecr == 'true'
 
-    - name: Determine build mode
-      id: build-mode
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Prepare architecture-specific tags
+      id: arch-tags
       shell: bash
       run: |
-        if [[ -n "${{ inputs.target-architecture }}" ]]; then
-          echo "mode=single-arch" >> $GITHUB_OUTPUT
-          echo "Using new single-architecture build mode"
-        else
-          echo "mode=legacy-buildx" >> $GITHUB_OUTPUT
-          echo "Using legacy buildx mode"
-        fi
-
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v3
-      if: inputs.use-emulation == 'true'
-      with:
-        # see: https://github.com/tonistiigi/binfmt/issues/215
-        # see: https://github.com/docker/setup-qemu-action/issues/198
-        image: tonistiigi/binfmt:qemu-v7.0.0-28
-
-    # Set up buildx for single-arch builds (new mode)
-    - name: Set up Docker Buildx for single-arch
-      uses: docker/setup-buildx-action@v3
-      if: steps.build-mode.outputs.mode == 'single-arch'
-
-    # # Set up Kubernetes buildx for legacy mode when not using emulation
-    # - name: Set up Kubernetes Docker Buildx
-    #   uses: docker/setup-buildx-action@v3
-    #   if: steps.build-mode.outputs.mode == 'legacy-buildx' && inputs.use-emulation == 'false'
-    #   with:
-    #     driver: kubernetes
-    #     driver-opts: |
-    #       namespace=actions-runner-docker
-    #       nodeselector=eks/nodegroup=github-build-amd64
-    #       "tolerations=key=dedicated,value=build-amd64,operator=Equal,effect=NoSchedule"
-    #       requests.cpu=${{ inputs.request-cpu }}
-    #       requests.memory=${{ inputs.request-memory }}
-    #       limits.cpu=${{ inputs.max-cpu }}
-    #       limits.memory=${{ inputs.max-memory }}
-
-    # # Legacy buildx build
-    # - name: Build and push with buildx (legacy)
-    #   id: build-legacy
-    #   if: steps.build-mode.outputs.mode == 'legacy-buildx'
-    #   uses: docker/build-push-action@v6
-    #   with:
-    #     annotations: ${{ steps.metadata.outputs.annotations }}
-    #     build-args: ${{ inputs.build-args }}
-    #     context: ${{ inputs.context }}
-    #     file: ${{ inputs.working-directory }}/${{ inputs.dockerfile }}
-    #     labels: ${{ steps.metadata.outputs.labels }}
-    #     no-cache: ${{ inputs.no-cache == 'true' }}
-    #     pull: ${{ inputs.pull == 'true' }}
-    #     push: ${{ inputs.push == 'true' }}
-    #     platforms: ${{ inputs.platforms }}
-    #     tags: ${{ steps.metadata.outputs.tags }}
-    #     provenance: false
+        # Get original tags from metadata
+        ORIGINAL_TAGS="${{ steps.metadata.outputs.tags }}"
+        
+        # Create architecture-specific tags by appending -${{ inputs.target-architecture }} to each tag
+        ARCH_TAGS=""
+        while IFS=',' read -ra TAG_ARRAY; do
+          for tag in "${TAG_ARRAY[@]}"; do
+            # Trim whitespace
+            tag=$(echo "$tag" | xargs)
+            if [[ -n "$tag" ]]; then
+              if [[ -z "$ARCH_TAGS" ]]; then
+                ARCH_TAGS="${tag}-${{ inputs.target-architecture }}"
+              else
+                ARCH_TAGS="${ARCH_TAGS},${tag}-${{ inputs.target-architecture }}"
+              fi
+            fi
+          done
+        done <<< "$ORIGINAL_TAGS"
+        
+        echo "Original tags: $ORIGINAL_TAGS"
+        echo "Architecture-specific tags: $ARCH_TAGS"
+        echo "arch-tags=$ARCH_TAGS" >> $GITHUB_OUTPUT
 
     - name: Build and push architecture-specific image
       id: build
-      if: steps.build-mode.outputs.mode == 'single-arch'
+      working-directory: ${{ inputs.working-directory }}
       uses: docker/build-push-action@v6
       with:
         build-args: ${{ inputs.build-args }}
         context: ${{ inputs.context }}
-        file: ${{ inputs.dockerfile }}  # Use dockerfile path directly, don't combine with working-directory
+        file: ${{ inputs.dockerfile }}
         labels: ${{ steps.metadata.outputs.labels }}
         no-cache: ${{ inputs.no-cache == 'true' }}
         pull: ${{ inputs.pull == 'true' }}
         push: ${{ inputs.push == 'true' }}
         platforms: linux/${{ inputs.target-architecture }}
-        tags: ${{ steps.metadata.outputs.tags }}-${{ inputs.target-architecture }}
+        tags: ${{ steps.arch-tags.outputs.arch-tags }}
         provenance: false
 
     - name: Output image tag
       id: outputs
       shell: bash
       run: |
-        if [[ "${{ steps.build-mode.outputs.mode }}" == "legacy-buildx" ]]; then
-          IMAGE_TAG=$(cut -d',' -f1 <<<'${{ steps.metadata.outputs.tags }}')
-        else
-          IMAGE_TAG=$(cut -d',' -f1 <<<'${{ steps.metadata.outputs.tags }}-${{ inputs.target-architecture }}')
-        fi
+        # Use the first arch-specific tag to extract the version
+        IMAGE_TAG=$(cut -d',' -f1 <<<'${{ steps.arch-tags.outputs.arch-tags }}')
         IMAGE_VERSION=$(cut -d':' -f2 <<<"${IMAGE_TAG}")
         echo "image-version=${IMAGE_VERSION}" >> $GITHUB_OUTPUT
