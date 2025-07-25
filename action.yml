@@ -114,24 +114,9 @@ runs:
       id: arch-tags
       shell: bash
       run: |
-        # Get original tags from metadata
+        # Simply append architecture to all tags using sed
         ORIGINAL_TAGS="${{ steps.metadata.outputs.tags }}"
-        
-        # Create architecture-specific tags by appending -${{ inputs.target-architecture }} to each tag
-        ARCH_TAGS=""
-        while IFS=',' read -ra TAG_ARRAY; do
-          for tag in "${TAG_ARRAY[@]}"; do
-            # Trim whitespace
-            tag=$(echo "$tag" | xargs)
-            if [[ -n "$tag" ]]; then
-              if [[ -z "$ARCH_TAGS" ]]; then
-                ARCH_TAGS="${tag}-${{ inputs.target-architecture }}"
-              else
-                ARCH_TAGS="${ARCH_TAGS},${tag}-${{ inputs.target-architecture }}"
-              fi
-            fi
-          done
-        done <<< "$ORIGINAL_TAGS"
+        ARCH_TAGS=$(echo "$ORIGINAL_TAGS" | sed "s/,/-${{ inputs.target-architecture }},/g" | sed "s/$/-${{ inputs.target-architecture }}/")
         
         echo "Original tags: $ORIGINAL_TAGS"
         echo "Architecture-specific tags: $ARCH_TAGS"
