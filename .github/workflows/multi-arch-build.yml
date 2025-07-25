@@ -153,12 +153,23 @@ jobs:
           # Get the original tags from the build job (like pr-24, edge, main, etc.)
           TAGS="${{ needs.build.outputs.tags }}"
           
-          echo "Creating manifest for tags: $TAGS"
+          echo "Creating manifests for tags: $TAGS"
           
-          # Create manifest list using the original action pattern
-          docker manifest create $TAGS \
-            $TAGS-amd64 \
-            $TAGS-arm64
-          
-          # Push manifest
-          docker manifest push $TAGS
+          # Create manifest for each tag separately (docker manifest create doesn't handle comma-separated tags)
+          IFS=',' read -ra TAG_ARRAY <<< "$TAGS"
+          for tag in "${TAG_ARRAY[@]}"; do
+            # Trim whitespace
+            tag=$(echo "$tag" | xargs)
+            if [[ -n "$tag" ]]; then
+              echo "Creating manifest for: $tag"
+              
+              # Create manifest list
+              docker manifest create "$tag" \
+                "${tag}-amd64" \
+                "${tag}-arm64"
+              
+              # Push manifest
+              echo "Pushing manifest: $tag"
+              docker manifest push "$tag"
+            fi
+          done
