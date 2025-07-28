@@ -81,8 +81,8 @@ jobs:
       fail-fast: false
       matrix:
         platform:
-          - linux/amd64
-          - linux/arm64
+          - amd64
+          - arm64
     outputs:
       image-version: ${{ steps.build.outputs.image-version }}
       tags: ${{ steps.build.outputs.tags }}
@@ -105,7 +105,7 @@ jobs:
           pull: ${{ inputs.pull }}
           push: ${{ inputs.push }}
           role-to-assume: ${{ inputs.role-to-assume }}
-          role-session-name: ${{ inputs.role-session-name }}-${{ replace(matrix.platform, 'linux/', '') }}
+          role-session-name: ${{ inputs.role-session-name }}-${{ matrix.platform }}
           version: ${{ inputs.version }}
           working-directory: ${{ inputs.working-directory }}
           target-architecture: ${{ matrix.platform }}
