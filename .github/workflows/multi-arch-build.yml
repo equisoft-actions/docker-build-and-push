@@ -94,6 +94,8 @@ jobs:
           version: ${{ inputs.version }}
 
   build:
+    # self-hosted dynamic label (cloud or self-hosted) true/false
+    # Define instance sizes (medium, large, xlarge, 2xlarge) to make it work cloud or self-hosted
     runs-on: [ self-hosted, "${{ matrix.platform}}" ]
     needs: 
       - prepare
@@ -103,6 +105,7 @@ jobs:
         platform:
           - amd64
           - arm64
+          ### Make it dynamic if needed, defaults on both architectures
     steps:
       - name: Build and push ${{ matrix.platform }}
         id: build
@@ -164,7 +167,7 @@ jobs:
       - name: Create and push manifest list
         working-directory: ${{ runner.temp }}/digests
         run: |
-          images=$(for f in digests-*; do echo "${{ inputs.registry }}@$(cat $f)"; done)
+          images=$(for f in digest-*; do echo "${{ inputs.registry }}@$(cat $f)"; done)
           echo "Creating manifest for images: $images"
 
           docker manifest create ${{ inputs.registry }}:${{ inputs.version }} $images
