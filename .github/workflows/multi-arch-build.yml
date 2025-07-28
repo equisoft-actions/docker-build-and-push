@@ -154,13 +154,19 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Create manifest list and push
+      # - name: Create manifest list and push
+      #   working-directory: ${{ runner.temp }}/digests
+      #   run: |
+      #     docker manifest create ${{ inputs.registry }}:${{ inputs.version }} \
+      #       ${{ needs.prepare.metadata.tags }}-amd64 \
+      #       ${{ needs.prepare.metadata.tags }}-arm64
+
+      - name: Create and push manifest list
         working-directory: ${{ runner.temp }}/digests
         run: |
-          docker manifest create ${{ inputs.registry }}:${{ inputs.version }} \
-            ${{ needs.prepare.metadata.tags }}-amd64 \
-            ${{ needs.prepare.metadata.tags }}-arm64
+          images=$(for f in digests-*; do echo "${{ inputs.registry }}@$(cat $f)"; done)
+          echo "Creating manifest for images: $images"
 
-      - name: Inspect image
-        run: |
-          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.version }}
+          docker manifest create ${{ inputs.registry }}:${{ inputs.version }} $images
+
+          docker manifest push ${{ inputs.registry }}:${{ inputs.version }}
