@@ -134,6 +134,22 @@ runs:
         platforms: ${{ inputs.platforms }}
         tags: ${{ steps.metadata.outputs.tags }}
 
+    - name: Export digest
+      id: export-digest
+      shell: bash
+      run: |
+        mkdir -p ${{ runner.temp }}/digests
+        digest="${{ steps.build-push.outputs.digest }}"
+        touch "${{ runner.temp }}/digests/${digest#sha256:}"
+
+    - name: Upload digest
+      uses: actions/upload-artifact@v4
+      with:
+        name: digests-${{ env.PLATFORM_PAIR }}
+        path: ${{ runner.temp }}/digests/*
+        if-no-files-found: error
+        retention-days: 1
+
     - name: Output image tag
       id: outputs
       shell: bash
