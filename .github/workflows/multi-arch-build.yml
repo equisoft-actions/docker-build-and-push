@@ -54,6 +54,10 @@ on:
         description: Role to assume that has write access to the registry
         type: string
         required: false
+      role-session-name:
+        description: Session name to use when assuming the role (optional)
+        type: string
+        required: false
       version:
         description: The SemVer compatible version for this image
         type: string
@@ -157,7 +161,7 @@ jobs:
         with:
           aws-region: ${{ inputs.aws-region }}
           role-to-assume: ${{ inputs.role-to-assume }}
-          role-session-name: create-manisfest-${{ github.run_id }}
+          role-session-name: ${{ inputs.role-session-name && inputs.role-session-name || 'create-manifest' }}-${{ github.run_id }}
 
       - name: Login to ECR
         uses: aws-actions/amazon-ecr-login@v2

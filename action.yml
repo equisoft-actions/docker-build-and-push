@@ -50,6 +50,10 @@ inputs:
   role-to-assume:
     description: Role to assume that has write access to the registry.
     required: false
+  role-session-name:
+    description: Session name to use when assuming the role (optional)
+    type: string
+    required: false
   tags:
     description: Comma-separated list of tags to apply to the image.
     required: tr
@@ -86,7 +90,7 @@ runs:
       with:
         aws-region: ${{ inputs.aws-region }}
         role-to-assume: ${{ inputs.role-to-assume }}
-        role-session-name: build-and-push-${{ github.run_id }}
+        role-session-name: ${{ inputs.role-session-name && inputs.role-session-name || 'build-and-push' }}-${{ github.run_id }}
 
     - name: Login to ECR
       uses: aws-actions/amazon-ecr-login@v2
