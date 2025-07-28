@@ -147,7 +147,7 @@ runs:
       shell: bash
       run: |
         mkdir -p ${{ runner.temp }}/digests
-        digest="${{ steps.build.outputs.digest }}"
+        digest="${{ steps.build-push.outputs.digest }}"
         touch "${{ runner.temp }}/digests/${digest#sha256:}"
 
     - name: Upload digest
