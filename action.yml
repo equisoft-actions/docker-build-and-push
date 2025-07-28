@@ -50,9 +50,6 @@ inputs:
   role-to-assume:
     description: Role to assume that has write access to the registry.
     required: false
-  role-session-name:
-    description: Session name to use when assuming the role.
-    required: false
   tags:
     description: Comma-separated list of tags to apply to the image.
     required: tr
@@ -89,7 +86,7 @@ runs:
       with:
         aws-region: ${{ inputs.aws-region }}
         role-to-assume: ${{ inputs.role-to-assume }}
-        role-session-name: ${{ inputs.role-session-name }}
+        role-session-name: ${{ github.workflow }}-${{ github.run_id }}-build-and-push
 
     - name: Login to ECR
       uses: aws-actions/amazon-ecr-login@v2
@@ -128,15 +125,17 @@ runs:
         tags: ${{ steps.context.outputs.tags }}
 
     - name: Export digest
+      if: inputs.push == 'true' && !contains(inputs.platforms, ',')
       shell: bash
       run: |
         mkdir -p ${{ runner.temp }}/digests
-        echo "${{ steps.build-push.outputs.digest }}" > ${{ runner.temp }}/digests/digest-${{ inputs.platform }}
+        echo "${{ steps.build-push.outputs.digest }}" > ${{ runner.temp }}/digests/digest-${{ replace(inputs.platforms, '/', '-') }}
 
     - name: Upload digest
+      if: inputs.push == 'true' && !contains(inputs.platforms, ',')
       uses: actions/upload-artifact@v4
       with:
-        name: digests-${{ inputs.platform }}
+        name: digests-${{ replace(inputs.platforms, '/', '-') }}
         path: ${{ runner.temp }}/digests/*
         if-no-files-found: error
         retention-days: 1
