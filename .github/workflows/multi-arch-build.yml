@@ -107,7 +107,7 @@ jobs:
     #32 GB RAM · 300 GB SSD
 
     runs-on: [ self-hosted, "${{ matrix.platform}}" ]
-    needs: 
+    needs:
       - prepare
     strategy:
       fail-fast: true
@@ -167,54 +167,35 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # - name: Create manifest list and push
-      #   working-directory: ${{ runner.temp }}/digests
-      #   run: |
-      #     docker manifest create ${{ inputs.registry }}:${{ inputs.version }} \
-      #       ${{ needs.prepare.metadata.tags }}-amd64 \
-      #       ${{ needs.prepare.metadata.tags }}-arm64
-
-      # - name: Create and push manifest list
-      #   working-directory: ${{ runner.temp }}/digests
-      #   run: |
-      #     images=$(for f in digest-*; do echo "${{ inputs.registry }}@$(cat $f)"; done)
-      #     echo "Creating manifest for images: $images"
-
-      #     docker manifest create ${{ inputs.registry }}:${{ inputs.version }} $images
-
-      #     docker manifest push ${{ inputs.registry }}:${{ inputs.version }}
-
-      - name: Create, Annotate, and Push Manifests
+      - name: Create and Push Manifests
         working-directory: ${{ runner.temp }}/digests
         env:
           TAGS: ${{ needs.prepare.outputs.tags }}
         run: |
           images=$(for f in digest-*; do echo "${{ inputs.registry }}@$(cat $f)"; done)
-          echo "Found images to include in manifest: $images"
+          echo "Source images for manifest: $images"
 
-          # Change le séparateur pour boucler sur les tags (qui sont séparés par des virgules)
-          IFS=','
-          for tag in $TAGS; do
-            if [[ -z "$tag" ]]; then continue; fi
+          tag_args=()
+          IFS=',' read -ra tag_array <<< "$TAGS"
+          for tag in "${tag_array[@]}"; do
+            if [[ -n "$tag" ]]; then
+              tag_args+=("-t" "$tag")
+            fi
+          done
+          echo "Tags to apply: ${tag_args[@]}"
 
-            echo "--- Processing manifest for tag: $tag ---"
+          docker buildx imagetools create "${tag_args[@]}" $images
 
-            echo "Creating manifest..."
-            docker manifest create "${{ inputs.registry }}:$tag" $images
+          for tag in "${tag_array[@]}"; do
+            if [[ -n "$tag" ]]; then
+              echo "Pushing $tag"
+              docker manifest push "$tag"
+            fi
+          done
 
-            # 2. Annote le manifest pour chaque architecture
-            for f in digest-*; do
-              arch=$(echo "$f" | sed 's/digest-//')
-              image_ref="${{ inputs.registry }}@$(cat $f)"
-              echo "Annotating manifest for platform linux/$arch..."
-              docker manifest annotate "${{ inputs.registry }}:$tag" "$image_ref" --os linux --arch "$arch"
-            done
-
-            # 3. Pousse le manifest final vers le registre
-            echo "Pushing manifest..."
-            docker manifest push "${{ inputs.registry }}:$tag"
-
-            # 4. Inspecte le manifest poussé pour vérification
-            echo "Inspecting final manifest on registry..."
-            docker buildx imagetools inspect "${{ inputs.registry }}:$tag"
+          echo "--- Inspecting created manifests on registry ---"
+          for tag in "${tag_array[@]}"; do
+            if [[ -n "$tag" ]]; then
+              docker buildx imagetools inspect "$tag"
+            fi
           done

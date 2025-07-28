@@ -102,7 +102,7 @@ runs:
         echo "is-ecr=${{ inputs.aws-region != '' }}" >> $GITHUB_OUTPUT
         platform=${{ inputs.platform }}
         echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_OUTPUT
-        
+
         new_tags=$(echo "${{ inputs.tags }}" | tr ',' '\n' | sed "s/$/-${{ inputs.platform }}/" | paste -sd ',')
         echo "tags=${new_tags}" >> $GITHUB_OUTPUT
 
@@ -140,15 +140,14 @@ runs:
         provenance: false
         pull: ${{ inputs.pull == 'true' }}
         push: ${{ inputs.push == 'true' }}
-        platforms: ${{ inputs.platform }}
+        platforms: linux/${{ inputs.platform }}
         tags: ${{ steps.context.outputs.tags }}
 
     - name: Export digest
       shell: bash
       run: |
         mkdir -p ${{ runner.temp }}/digests
-        digest="${{ steps.build-push.outputs.digest }}"
-        touch "${{ runner.temp }}/digests/digest-${digest}"
+        echo "${{ steps.build-push.outputs.digest }}" > ${{ runner.temp }}/digests/digest-${{ inputs.platform }}
 
     - name: Upload digest
       uses: actions/upload-artifact@v4
