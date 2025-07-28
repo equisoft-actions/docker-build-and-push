@@ -75,21 +75,44 @@ on:
         value: ${{ jobs.build.outputs.image-version }}
 
 jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      tags: ${{ steps.metadata.outputs.tags }}
+      labels: ${{ steps.metadata.outputs.labels }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Action context
+        shell: bash
+        id: context
+        run: |
+          echo "has-role=${{ inputs.role-to-assume != '' }}" >> $GITHUB_OUTPUT
+          echo "is-ecr=${{ inputs.aws-region != '' }}" >> $GITHUB_OUTPUT
+          platform=${{ matrix.platform }}
+          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_OUTPUT
+
+      - name: Prepare image data
+        id: metadata
+        uses: equisoft-actions/docker-metadata@v1
+        with:
+          title: ${{ inputs.name }}
+          image-name: ${{ inputs.registry }}/${{ inputs.name }}
+          release: ${{ inputs.is-release }}
+          version: ${{ inputs.version }}
+
   build:
     runs-on: [ self-hosted, "${{ matrix.platform}}" ]
+    needs: 
+      - prepare
     strategy:
       fail-fast: false
       matrix:
         platform:
           - amd64
           - arm64
-    outputs:
-      image-version: ${{ steps.build.outputs.image-version }}
-      tags: ${{ steps.build.outputs.tags }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
       - name: Build and push ${{ matrix.platform }}
         id: build
         uses: equisoft-actions/docker-build-and-push@DOPS-5820/retire-buildx
@@ -99,70 +122,18 @@ jobs:
           build-args: ${{ inputs.build-args }}
           context: ${{ inputs.context }}
           dockerfile: ${{ inputs.dockerfile }}
+          labels: ${{ steps.metadata.outputs.labels }}
           name: ${{ inputs.name }}
           no-cache: ${{ inputs.no-cache }}
           is-release: ${{ inputs.is-release }}
+          platform: ${{ matrix.platform }}
           pull: ${{ inputs.pull }}
           push: ${{ inputs.push }}
           role-to-assume: ${{ inputs.role-to-assume }}
           role-session-name: ${{ inputs.role-session-name }}-${{ matrix.platform }}
+          tags: ${{ steps.metadata.outputs.tags }}-${{ matrix.platform }}
           version: ${{ inputs.version }}
           working-directory: ${{ inputs.working-directory }}
-
-  # create-manifest:
-  #   runs-on: ubuntu-latest
-  #   needs: 
-  #     - build
-  #   if: inputs.push == true
-  #   steps:
-  #     - name: Configure AWS Credentials
-  #       uses: aws-actions/configure-aws-credentials@v4
-  #       if: inputs.aws-region != ''
-  #       with:
-  #         aws-region: ${{ inputs.aws-region }}
-  #         role-to-assume: ${{ inputs.role-to-assume }}
-  #         role-session-name: ${{ inputs.role-session-name }}-manifest
-
-  #     - name: Login to ECR
-  #       uses: aws-actions/amazon-ecr-login@v2
-  #       if: inputs.aws-region != ''
-
-  #     - name: Prepare image metadata for manifest
-  #       id: metadata
-  #       uses: equisoft-actions/docker-metadata@v1
-  #       with:
-  #         title: ${{ inputs.name }}
-  #         image-name: ${{ inputs.registry }}/${{ inputs.name }}
-  #         release: ${{ inputs.is-release }}
-  #         version: ${{ inputs.version }}
-
-  #     - name: Create and push manifest
-  #       shell: bash
-  #       run: |
-  #         # Use metadata tags (reconstructed from inputs) instead of build job outputs
-  #         # This avoids matrix job output issues
-  #         TAGS="${{ steps.metadata.outputs.tags }}"
-          
-  #         echo "Creating manifests for tags: $TAGS"
-          
-  #         # Create manifest for each tag separately (docker manifest create doesn't handle comma-separated tags)
-  #         IFS=',' read -ra TAG_ARRAY <<< "$TAGS"
-  #         for tag in "${TAG_ARRAY[@]}"; do
-  #           # Trim whitespace
-  #           tag=$(echo "$tag" | xargs)
-  #           if [[ -n "$tag" ]]; then
-  #             echo "Creating manifest for: $tag"
-              
-  #             # Create manifest list
-  #             docker manifest create "$tag" \
-  #               "${tag}-amd64" \
-  #               "${tag}-arm64"
-              
-  #             # Push manifest
-  #             echo "Pushing manifest: $tag"
-  #             docker manifest push "$tag"
-  #           fi
-  #         done
 
   create-manifest:
     runs-on: ubuntu-latest

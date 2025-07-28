@@ -31,6 +31,10 @@ inputs:
     description: Path to Dockerfile relative to context (e.g., 'Dockerfile' or 'docker/Dockerfile')
     required: true
     default: Dockerfile
+  labels:
+    description: Labels to apply to the image, in the format 'key=value,key2=value2'.
+    required: false
+    default: ""
   name:
     description: A simple name for this image
     required: true
@@ -42,6 +46,9 @@ inputs:
     description: if this build is a production release
     required: false
     default: "false"
+  platform:
+    description: The target platform for the image, e.g., 'amd64,arm64'.
+    required: false
   pull:
     description: Always attempt to pull all referenced images (default false)
     required: false
@@ -56,6 +63,10 @@ inputs:
   role-session-name:
     description: Session name to use when assuming the role.
     required: false
+  tags:
+    description: Comma-separated list of tags to apply to the image.
+    required: false
+    default: ""
   version:
     description: The SemVer compatible version for this image, without prefixes.
     required: true
@@ -80,23 +91,6 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Action context
-      shell: bash
-      id: context
-      run: |
-        echo "has-role=${{ inputs.role-to-assume != '' }}" >> $GITHUB_OUTPUT
-        echo "is-ecr=${{ inputs.aws-region != '' }}" >> $GITHUB_OUTPUT
-        platform=${{ matrix.platform }}
-        echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_OUTPUT
-
-    - name: Prepare image data
-      id: metadata
-      uses: equisoft-actions/docker-metadata@v1
-      with:
-        title: ${{ inputs.name }}
-        image-name: ${{ inputs.registry }}/${{ inputs.name }}
-        release: ${{ inputs.is-release }}
-        version: ${{ inputs.version }}
 
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v4
@@ -127,15 +121,14 @@ runs:
           BUILDKIT_MULTI_PLATFORM=1
         context: ${{ inputs.context }}
         file: ${{ inputs.working-directory }}/${{ inputs.dockerfile }}
-        labels: ${{ steps.metadata.outputs.labels }}
-        load: ${{ inputs.push != 'true' && !contains(inputs.platforms, ',') }}
+        labels: ${{ inputs.labels }}
+        load: ${{ inputs.push != 'true' && !contains(inputs.platform, ',') }}
         no-cache: ${{ inputs.no-cache == 'true' }}
         provenance: false
         pull: ${{ inputs.pull == 'true' }}
         push: ${{ inputs.push == 'true' }}
-        platforms: ${{ inputs.platforms }}
-        tags: ${{ steps.metadata.outputs.tags }}
-        # outputs: type=image,push-by-digest=true,name-canonical=true,push=true ### PAS SUR DE CE QUE CA FAIT
+        platforms: ${{ inputs.platform }}
+        tags: ${{ inputs.tags }}
 
     - name: Export digest
       id: export-digest
@@ -153,10 +146,10 @@ runs:
         if-no-files-found: error
         retention-days: 1
 
-    - name: Output image tag
-      id: outputs
-      shell: bash
-      run: |
-        IMAGE_TAG=$(cut -d',' -f1 <<<'${{ steps.metadata.outputs.tags }}')
-        IMAGE_VERSION=$(cut -d':' -f2 <<<"${IMAGE_TAG}")
-        echo "image-version=${IMAGE_VERSION}" >> $GITHUB_OUTPUT
+    # - name: Output image tag
+    #   id: outputs
+    #   shell: bash
+    #   run: |
+    #     IMAGE_TAG=$(cut -d',' -f1 <<<'${{ inputs.tags }}')
+    #     IMAGE_VERSION=$(cut -d':' -f2 <<<"${IMAGE_TAG}")
+    #     echo "image-version=${IMAGE_VERSION}" >> $GITHUB_OUTPUT
