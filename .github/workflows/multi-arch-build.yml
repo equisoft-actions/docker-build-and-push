@@ -68,16 +68,6 @@ on:
         type: string
         required: false
         default: "."
-      runner-amd64:
-        description: Runner labels for AMD64 builds
-        type: string
-        required: false
-        default: "ubuntu-latest"
-      runner-arm64:
-        description: Runner labels for ARM64 builds
-        type: string
-        required: false
-        default: "ubuntu-latest"
 
     outputs:
       image-version:
@@ -88,7 +78,11 @@ jobs:
   build:
     runs-on: [ self-hosted, "${{ matrix.runner-label }}" ]
     strategy:
+      fail-fast: false
       matrix:
+        platform:
+          - linux/amd64
+          - linux/arm64
         include:
           - arch: amd64
             runner-label: github-build-amd64
@@ -101,7 +95,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build and push ${{ matrix.arch }}
+      - name: Build and push ${{ matrix.platform }}
         id: build
         uses: equisoft-actions/docker-build-and-push@DOPS-5820/retire-buildx
         with:
@@ -116,10 +110,10 @@ jobs:
           pull: ${{ inputs.pull }}
           push: ${{ inputs.push }}
           role-to-assume: ${{ inputs.role-to-assume }}
-          role-session-name: ${{ inputs.role-session-name }}-${{ matrix.arch }}
+          role-session-name: ${{ inputs.role-session-name }}-${{ matrix.platform }}
           version: ${{ inputs.version }}
           working-directory: ${{ inputs.working-directory }}
-          target-architecture: ${{ matrix.arch }}  # Now this will be "amd64" or "arm64"
+          target-architecture: ${{ matrix.platform }}
 
   create-manifest:
     runs-on: ubuntu-latest
@@ -146,16 +140,6 @@ jobs:
           image-name: ${{ inputs.registry }}/${{ inputs.name }}
           release: ${{ inputs.is-release }}
           version: ${{ inputs.version }}
-
-      - name: Debug manifest creation
-        shell: bash
-        run: |
-          echo "Tags from metadata: ${{ steps.metadata.outputs.tags }}"
-          echo "Tags from build job: ${{ needs.build.outputs.tags }}"
-          echo "Will create manifests by combining:"
-          echo "  - {tag}-amd64"
-          echo "  - {tag}-arm64"
-          echo "  -> {tag} (multi-arch manifest)"
 
       - name: Create and push manifest
         shell: bash
