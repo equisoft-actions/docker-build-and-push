@@ -122,7 +122,7 @@ jobs:
           push: ${{ inputs.push }}
           role-to-assume: ${{ inputs.role-to-assume }}
           role-session-name: ${{ inputs.role-session-name }}-${{ matrix.platform }}
-          tags: ${{ needs.prepare.outputs.tags }}-${{ matrix.platform }}
+          tags: ${{ needs.prepare.outputs.tags }}
           version: ${{ inputs.version }}
           working-directory: ${{ inputs.working-directory }}
 

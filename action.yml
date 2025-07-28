@@ -100,8 +100,11 @@ runs:
       run: |
         echo "has-role=${{ inputs.role-to-assume != '' }}" >> $GITHUB_OUTPUT
         echo "is-ecr=${{ inputs.aws-region != '' }}" >> $GITHUB_OUTPUT
-        platform=${{ matrix.platform }}
+        platform=${{ inputs.platform }}
         echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_OUTPUT
+        
+        new_tags=$(echo "${{ inputs.tags }}" | tr ',' '\n' | sed "s/$/-${{ inputs.platform }}/" | paste -sd ',')
+        echo "tags=${new_tags}" >> $GITHUB_OUTPUT
 
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v4
@@ -139,7 +142,7 @@ runs:
         pull: ${{ inputs.pull == 'true' }}
         push: ${{ inputs.push == 'true' }}
         platforms: ${{ inputs.platform }}
-        tags: ${{ inputs.tags }}
+        tags: ${{ steps.context.outputs.tags }}
 
     - name: Export digest
       id: export-digest
