@@ -80,13 +80,13 @@ inputs:
 outputs:
   image-id:
     description: Image ID built by this action
-    value: ${{ steps.build.outputs.imageid }}
+    value: ${{ steps.build-push.outputs.imageid }}
   image-version:
     description: Image version built by this action
-    value: ${{ steps.outputs.outputs.image-version }}
-  tags:
-    description: Tags built by this action (original tags, without architecture suffix)
-    value: ${{ steps.metadata.outputs.tags }}
+    value: ${{ steps.build-push.outputs.image-version }}
+  digest:
+    description: Image digest built by this action
+    value: ${{ steps.build-push.outputs.digest }}
 
 runs:
   using: composite
@@ -129,7 +129,6 @@ runs:
       env:
         DOCKER_BUILD_SUMMARY: ${{ inputs.build-summary == 'true' || 'false' }}
       with:
-        ###
         build-args: |
           ${{ inputs.build-args }}
           BUILDKIT_MULTI_PLATFORM=1
@@ -145,25 +144,16 @@ runs:
         tags: ${{ steps.context.outputs.tags }}
 
     - name: Export digest
-      id: export-digest
       shell: bash
       run: |
         mkdir -p ${{ runner.temp }}/digests
-        digest="${{ steps.build-push.outputs.digest }}"
+        digest="${{ steps.build.outputs.digest }}"
         touch "${{ runner.temp }}/digests/${digest#sha256:}"
 
     - name: Upload digest
       uses: actions/upload-artifact@v4
       with:
-        name: digests-${{ steps.context.outputs.PLATFORM_PAIR }}
+        name: digests-${{ inputs.platform }}
         path: ${{ runner.temp }}/digests/*
         if-no-files-found: error
         retention-days: 1
-
-    # - name: Output image tag
-    #   id: outputs
-    #   shell: bash
-    #   run: |
-    #     IMAGE_TAG=$(cut -d',' -f1 <<<'${{ inputs.tags }}')
-    #     IMAGE_VERSION=$(cut -d':' -f2 <<<"${IMAGE_TAG}")
-    #     echo "image-version=${IMAGE_VERSION}" >> $GITHUB_OUTPUT
