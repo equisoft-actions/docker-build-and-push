@@ -91,6 +91,17 @@ outputs:
 runs:
   using: composite
   steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Action context
+      shell: bash
+      id: context
+      run: |
+        echo "has-role=${{ inputs.role-to-assume != '' }}" >> $GITHUB_OUTPUT
+        echo "is-ecr=${{ inputs.aws-region != '' }}" >> $GITHUB_OUTPUT
+        platform=${{ matrix.platform }}
+        echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_OUTPUT
 
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v4
