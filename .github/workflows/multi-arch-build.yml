@@ -108,7 +108,6 @@ jobs:
           role-session-name: ${{ inputs.role-session-name }}-${{ matrix.platform }}
           version: ${{ inputs.version }}
           working-directory: ${{ inputs.working-directory }}
-          target-architecture: ${{ matrix.platform }}
 
   # create-manifest:
   #   runs-on: ubuntu-latest
