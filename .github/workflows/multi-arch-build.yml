@@ -195,7 +195,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY_IMAGE }}
+          images: ${{ inputs.registry }}/${{ inputs.name }}
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -204,6 +204,8 @@ jobs:
 
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
+        env:
+          REGISTRY_IMAGE: ${{ inputs.registry }}/${{ inputs.name }}
         run: |
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)

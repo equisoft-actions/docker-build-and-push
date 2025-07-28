@@ -135,7 +135,7 @@ runs:
         push: ${{ inputs.push == 'true' }}
         platforms: ${{ inputs.platforms }}
         tags: ${{ steps.metadata.outputs.tags }}
-        outputs: type=image,push-by-digest=true,name-canonical=true,push=true
+        # outputs: type=image,push-by-digest=true,name-canonical=true,push=true ### PAS SUR DE CE QUE CA FAIT
 
     - name: Export digest
       id: export-digest
