@@ -96,6 +96,16 @@ jobs:
   build:
     # self-hosted dynamic label (cloud or self-hosted) true/false
     # Define instance sizes (medium, large, xlarge, 2xlarge) to make it work cloud or self-hosted
+
+    #2-core (large)
+    #8 GB RAM · 75 GB SSD
+
+    #4-core (xlarge)
+    #16 GB RAM · 150 GB SSD
+
+    #8-core (2xlarge)
+    #32 GB RAM · 300 GB SSD
+
     runs-on: [ self-hosted, "${{ matrix.platform}}" ]
     needs: 
       - prepare
@@ -164,12 +174,47 @@ jobs:
       #       ${{ needs.prepare.metadata.tags }}-amd64 \
       #       ${{ needs.prepare.metadata.tags }}-arm64
 
-      - name: Create and push manifest list
+      # - name: Create and push manifest list
+      #   working-directory: ${{ runner.temp }}/digests
+      #   run: |
+      #     images=$(for f in digest-*; do echo "${{ inputs.registry }}@$(cat $f)"; done)
+      #     echo "Creating manifest for images: $images"
+
+      #     docker manifest create ${{ inputs.registry }}:${{ inputs.version }} $images
+
+      #     docker manifest push ${{ inputs.registry }}:${{ inputs.version }}
+
+      - name: Create, Annotate, and Push Manifests
         working-directory: ${{ runner.temp }}/digests
+        env:
+          TAGS: ${{ needs.prepare.outputs.tags }}
         run: |
           images=$(for f in digest-*; do echo "${{ inputs.registry }}@$(cat $f)"; done)
-          echo "Creating manifest for images: $images"
+          echo "Found images to include in manifest: $images"
 
-          docker manifest create ${{ inputs.registry }}:${{ inputs.version }} $images
+          # Change le séparateur pour boucler sur les tags (qui sont séparés par des virgules)
+          IFS=','
+          for tag in $TAGS; do
+            if [[ -z "$tag" ]]; then continue; fi
 
-          docker manifest push ${{ inputs.registry }}:${{ inputs.version }}
+            echo "--- Processing manifest for tag: $tag ---"
+
+            echo "Creating manifest..."
+            docker manifest create "${{ inputs.registry }}:$tag" $images
+
+            # 2. Annote le manifest pour chaque architecture
+            for f in digest-*; do
+              arch=$(echo "$f" | sed 's/digest-//')
+              image_ref="${{ inputs.registry }}@$(cat $f)"
+              echo "Annotating manifest for platform linux/$arch..."
+              docker manifest annotate "${{ inputs.registry }}:$tag" "$image_ref" --os linux --arch "$arch"
+            done
+
+            # 3. Pousse le manifest final vers le registre
+            echo "Pushing manifest..."
+            docker manifest push "${{ inputs.registry }}:$tag"
+
+            # 4. Inspecte le manifest poussé pour vérification
+            echo "Inspecting final manifest on registry..."
+            docker buildx imagetools inspect "${{ inputs.registry }}:$tag"
+          done
