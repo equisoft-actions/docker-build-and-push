@@ -117,6 +117,9 @@ jobs:
           - arm64
           ### Make it dynamic if needed, defaults on both architectures
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Build and push ${{ matrix.platform }}
         id: build
         uses: equisoft-actions/docker-build-and-push@DOPS-5820/retire-buildx
@@ -193,11 +196,12 @@ jobs:
           done
           echo "Tags to apply: ${tag_args[@]}"
 
+          echo "--- Creating and pushing manifest to registry ---"
           docker buildx imagetools create "${tag_args[@]}" $images
 
+          echo "--- Inspecting created manifests on registry ---"
           for tag in "${tag_array[@]}"; do
             if [[ -n "$tag" ]]; then
-              echo "Pushing $tag"
-              docker manifest push "$tag"
+              docker buildx imagetools inspect "$tag"
             fi
           done
