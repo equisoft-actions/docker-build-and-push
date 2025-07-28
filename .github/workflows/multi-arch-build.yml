@@ -102,7 +102,7 @@ jobs:
     #8-core (2xlarge)
     #32 GB RAM · 300 GB SSD
 
-    runs-on: [ self-hosted, "${{ matrix.platform}}" ]
+    runs-on: [self-hosted, "${{ matrix.platform}}"]
     needs:
       - prepare
     strategy:
