@@ -84,9 +84,6 @@ outputs:
   image-version:
     description: Image version built by this action
     value: ${{ steps.build-push.outputs.image-version }}
-  digest:
-    description: Image digest built by this action
-    value: ${{ steps.build-push.outputs.digest }}
 
 runs:
   using: composite
@@ -100,9 +97,6 @@ runs:
       run: |
         echo "has-role=${{ inputs.role-to-assume != '' }}" >> $GITHUB_OUTPUT
         echo "is-ecr=${{ inputs.aws-region != '' }}" >> $GITHUB_OUTPUT
-        platform=${{ inputs.platform }}
-        echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_OUTPUT
-
         new_tags=$(echo "${{ inputs.tags }}" | tr ',' '\n' | sed "s/$/-${{ inputs.platform }}/" | paste -sd ',')
         echo "tags=${new_tags}" >> $GITHUB_OUTPUT
 
@@ -131,11 +125,9 @@ runs:
       with:
         build-args: |
           ${{ inputs.build-args }}
-          BUILDKIT_MULTI_PLATFORM=1
         context: ${{ inputs.context }}
         file: ${{ inputs.working-directory }}/${{ inputs.dockerfile }}
         labels: ${{ inputs.labels }}
-        load: ${{ inputs.push != 'true' && !contains(inputs.platform, ',') }}
         no-cache: ${{ inputs.no-cache == 'true' }}
         provenance: false
         pull: ${{ inputs.pull == 'true' }}

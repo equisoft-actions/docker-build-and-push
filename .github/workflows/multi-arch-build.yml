@@ -152,17 +152,26 @@ jobs:
           pattern: digests-*
           merge-multiple: true
 
+      - name: Action context
+        shell: bash
+        id: context
+        run: |
+          echo "has-role=${{ inputs.role-to-assume != '' }}" >> $GITHUB_OUTPUT
+          echo "is-ecr=${{ inputs.aws-region != '' }}" >> $GITHUB_OUTPUT
+
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
-        if: inputs.aws-region != ''
+        if: steps.context.outputs.is-ecr == 'true'
         with:
+          aws-access-key-id: ${{ steps.context.outputs.has-role != 'true' && inputs.aws-access-key-id || '' }}
+          aws-secret-access-key: ${{ steps.context.outputs.has-role != 'true' && inputs.aws-secret-access-key || '' }}
           aws-region: ${{ inputs.aws-region }}
           role-to-assume: ${{ inputs.role-to-assume }}
           role-session-name: ${{ inputs.role-session-name }}-manifest
 
       - name: Login to ECR
         uses: aws-actions/amazon-ecr-login@v2
-        if: inputs.aws-region != ''
+        if: steps.context.outputs.is-ecr == 'true'
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -172,7 +181,7 @@ jobs:
         env:
           TAGS: ${{ needs.prepare.outputs.tags }}
         run: |
-          images=$(for f in digest-*; do echo "${{ inputs.registry }}@$(cat $f)"; done)
+          images=$(for f in digest-*; do echo "${{ inputs.registry }}/${{ inputs.name }}@$(cat $f)"; done)
           echo "Source images for manifest: $images"
 
           tag_args=()
@@ -190,12 +199,5 @@ jobs:
             if [[ -n "$tag" ]]; then
               echo "Pushing $tag"
               docker manifest push "$tag"
-            fi
-          done
-
-          echo "--- Inspecting created manifests on registry ---"
-          for tag in "${tag_array[@]}"; do
-            if [[ -n "$tag" ]]; then
-              docker buildx imagetools inspect "$tag"
             fi
           done
