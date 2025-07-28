@@ -76,7 +76,7 @@ on:
 
 jobs:
   build:
-    runs-on: [ self-hosted, "${{ matrix.runner-label }}" ]
+    runs-on: [ self-hosted, "${{ matrix.platform}}" ]
     strategy:
       fail-fast: false
       matrix:
