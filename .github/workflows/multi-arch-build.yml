@@ -22,6 +22,11 @@ on:
         type: string
         required: false
         default: Dockerfile
+      is-release:
+        description: If this build is a production release
+        type: boolean
+        required: false
+        default: false
       name:
         description: A simple name for this image
         type: string
@@ -31,11 +36,11 @@ on:
         type: boolean
         required: false
         default: false
-      is-release:
-        description: If this build is a production release
-        type: boolean
+      platforms:
+        description: Comma-separated list of platforms to build
+        type: string
         required: false
-        default: false
+        default: "amd64,arm64"
       pull:
         description: Always attempt to pull all referenced images
         type: boolean
@@ -50,12 +55,12 @@ on:
         description: The registry where the image will be pushed to
         type: string
         required: true
-      role-to-assume:
-        description: Role to assume that has write access to the registry
-        type: string
-        required: false
       role-session-name:
         description: Session name to use when assuming the role (optional)
+        type: string
+        required: false
+      role-to-assume:
+        description: Role to assume that has write access to the registry
         type: string
         required: false
       version:
@@ -112,10 +117,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        platform:
-          - amd64
-          - arm64
-          ### Make it dynamic if needed, defaults on both architectures
+        platform:  ${{ fromJson(format('["{0}"]', join(split(inputs.platforms, ','), '","'))) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

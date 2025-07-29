@@ -52,11 +52,10 @@ inputs:
     required: false
   role-session-name:
     description: Session name to use when assuming the role (optional)
-    type: string
     required: false
   tags:
     description: Comma-separated list of tags to apply to the image.
-    required: tr
+    required: true
   working-directory:
     description: >-
       Relative path under $GITHUB_WORKSPACE where the project is located.
