@@ -132,7 +132,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        platform: ${{ needs.prepare.outputs.platforms }}
+        platform: ${{ fromJson(needs.prepare.outputs.platforms) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
