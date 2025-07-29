@@ -98,6 +98,14 @@ jobs:
           release: ${{ inputs.is-release }}
           version: ${{ inputs.version }}
 
+      - name: Prepare platforms matrix
+        id: platforms
+        run: |
+          platforms_input="${{ inputs.platforms }}"
+          platforms_json=$(echo "$platforms_input" | jq -R 'split(",") | map(select(length > 0))')
+          echo "platforms=$platforms_json" >> $GITHUB_OUTPUT
+          echo "Platforms to build: $platforms_json"
+
   build:
     # self-hosted dynamic label (cloud or self-hosted) true/false
     # Define instance sizes (medium, large, xlarge, 2xlarge) to make it work cloud or self-hosted
@@ -117,7 +125,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        platform:  ${{ fromJson(format('["{0}"]', join(split(inputs.platforms, ','), '","'))) }}
+        platform:  ${{ fromJson(needs.prepare.outputs.platforms) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
