@@ -113,7 +113,6 @@ jobs:
           echo "Platforms to build: $platforms_json"
 
   build:
-    # self-hosted dynamic label (cloud or self-hosted) true/false
     # Define instance sizes (medium, large, xlarge, 2xlarge) to make it work cloud or self-hosted
 
     #2-core (large)
@@ -129,7 +128,7 @@ jobs:
       ${{
         inputs.use-self-hosted && 
         fromJson(format('["self-hosted","{0}"]', matrix.platform)) || 
-        (matrix.platform == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest')
+        (matrix.platform == 'arm64' && 'arm64-large' || 'ubuntu-latest')
       }}
     needs:
       - prepare
