@@ -107,7 +107,7 @@ jobs:
         id: platforms
         run: |
           platforms_input="${{ inputs.platforms }}"
-          platforms_json=$(echo "$platforms_input" | jq -R 'split(",") | map(select(length > 0))')
+          platforms_json=$(echo "$platforms_input" | jq -Rc 'split(",") | map(select(length > 0))')
           echo "platforms=$platforms_json" >> $GITHUB_OUTPUT
           echo "Platforms to build: $platforms_json"
 
