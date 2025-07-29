@@ -90,6 +90,7 @@ jobs:
       tags: ${{ steps.metadata.outputs.tags }}
       labels: ${{ steps.metadata.outputs.labels }}
       annotations: ${{ steps.metadata.outputs.annotations }}
+      platforms: ${{ steps.platforms.outputs.platforms }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -130,7 +131,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        platform: ${{ needs.prepare.outputs.platforms }}
+        platform: ${{ fromJson(needs.prepare.outputs.platforms) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
