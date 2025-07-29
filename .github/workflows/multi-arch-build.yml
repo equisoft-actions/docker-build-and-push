@@ -150,8 +150,10 @@ jobs:
           platforms: linux/${{ matrix.platform }}
           pull: ${{ inputs.pull }}
           push: ${{ inputs.push }}
+          push-manifest: "false"
           registry: ${{ inputs.registry }}
           role-to-assume: ${{ inputs.role-to-assume }}
+          tags: ${{ needs.prepare.outputs.tags }}
           working-directory: ${{ inputs.working-directory }}
 
   create-manifest:

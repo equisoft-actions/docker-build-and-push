@@ -47,6 +47,10 @@ inputs:
     description: "`true` to push the built image. `false` otherwise (default)."
     required: true
     default: "false"
+  push-manifest:
+    description: If true, push a final manifest list after building all platforms. if false, manifest action will be required to create a manifest list.
+    required: false
+    default: "true"
   role-to-assume:
     description: Role to assume that has write access to the registry.
     required: false
@@ -55,8 +59,7 @@ inputs:
     required: false
   tags:
     description: Comma-separated list of tags to apply to the image. Do not use with manifest builds.
-    default: ""
-    required: false
+    required: true
   working-directory:
     description: >-
       Relative path under $GITHUB_WORKSPACE where the project is located.
@@ -81,6 +84,14 @@ runs:
           exit 1
         fi
         echo "is-ecr=${{ inputs.aws-region != '' }}" >> $GITHUB_OUTPUT
+        if [[ "${{ inputs.push-manifest }}" == "true" ]]; then
+          # Use tag as is
+          new_tags=$(echo "${{ inputs.tags }}")
+        else
+          # Append platform suffix to each tag
+          new_tags=$(echo "${{ inputs.tags }}" | tr ',' '\n' | sed "s/$/-${{ inputs.platform }}/" | paste -sd ',')
+        fi
+        echo "tags=${new_tags}" >> $GITHUB_OUTPUT
 
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v4
@@ -124,7 +135,7 @@ runs:
         pull: ${{ inputs.pull == 'true' }}
         push: ${{ inputs.push == 'true' }}
         platforms: ${{ inputs.platforms }}
-        tags: ${{ inputs.tags }}
+        tags: ${{ steps.context.outputs.tags }}
 
     - name: Sanitize platform string for artifact name
       if: inputs.push == 'true' && !contains(inputs.platforms, ',')
