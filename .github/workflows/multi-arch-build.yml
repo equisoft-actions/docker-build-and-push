@@ -125,8 +125,7 @@ jobs:
     #8-core (2xlarge)
     #32 GB RAM · 300 GB SSD
 
-    runs-on: [self-hosted, "${{ matrix.platform}}"]
-    # runs-on: ${{ inputs.use-self-hosted && format('[''self-hosted'', ''{0}'']', matrix.platform) || (matrix.platform == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest') }}
+    runs-on: ${{ inputs.use-self-hosted && format('[''self-hosted'', ''{0}'']', matrix.platform) || (matrix.platform == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest') }}
     needs:
       - prepare
     strategy:
