@@ -48,7 +48,7 @@ inputs:
     required: true
     default: "false"
   push-manifest:
-    description: If true, push a final manifest list after building all platforms. if false, manifest action will be required to create a manifest list.
+    description: If true, push a final manifest list after building all platforms. Cannot be false when building for multiple platforms.
     required: false
     default: "true"
   role-to-assume:
@@ -88,8 +88,12 @@ runs:
           # Use tag as is
           new_tags=$(echo "${{ inputs.tags }}")
         else
+          if [[ "${{ inputs.platforms }}" == *","* ]]; then
+            echo "Error: When building for multiple platforms, push-manifest must be true to create a manifest list. Please set push-manifest to true." >&2
+            exit 1
+          fi
           # Append platform suffix to each tag
-          new_tags=$(echo "${{ inputs.tags }}" | tr ',' '\n' | sed "s/$/-${{ inputs.platform }}/" | paste -sd ',')
+          new_tags=$(echo "${{ inputs.tags }}" | tr ',' '\n' | sed "s/$/-${{ inputs.platforms }}/" | paste -sd ',')
         fi
         echo "tags=${new_tags}" >> $GITHUB_OUTPUT
 
