@@ -22,6 +22,12 @@ on:
         type: string
         required: false
         default: Dockerfile
+      instance-size:
+        description: 'Runner instance size'
+        required: true
+        type: string
+        default: 'large'
+
       is-release:
         description: If this build is a production release
         type: boolean
@@ -113,23 +119,7 @@ jobs:
           echo "Platforms to build: $platforms_json"
 
   build:
-    # Define instance sizes (medium, large, xlarge, 2xlarge) to make it work cloud or self-hosted
-
-    #2-core (large)
-    #8 GB RAM · 75 GB SSD
-
-    #4-core (xlarge)
-    #16 GB RAM · 150 GB SSD
-
-    #8-core (2xlarge)
-    #32 GB RAM · 300 GB SSD
-
-    runs-on: >-
-      ${{
-        inputs.use-self-hosted && 
-        fromJson(format('["self-hosted","{0}"]', matrix.platform)) || 
-        (matrix.platform == 'arm64' && 'arm64-large' || 'ubuntu-latest')
-      }}
+    runs-on: ${{ inputs.use-self-hosted && fromJSON(format('["self-hosted", "{0}-{1}"]', matrix.platform, inputs.instance-size)) || format('{0}-{1}', matrix.platform, inputs.instance-size) }}
     needs:
       - prepare
     strategy:
