@@ -93,11 +93,12 @@ jobs:
   prepare:
     runs-on: ubuntu-latest
     outputs:
-      tags: ${{ steps.metadata.outputs.tags }}
-      labels: ${{ steps.metadata.outputs.labels }}
       annotations: ${{ steps.metadata.outputs.annotations }}
+      architectures: ${{ steps.metadata.outputs.architectures }}
+      labels: ${{ steps.metadata.outputs.labels }}
       platforms: ${{ steps.metadata.outputs.platforms }}
       runner-config: ${{ steps.metadata.outputs.runner-config }}
+      tags: ${{ steps.metadata.outputs.tags }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -115,18 +116,18 @@ jobs:
           instance-size: ${{ inputs.instance-size }}
 
   build:
-    runs-on: ${{ fromJSON(format(needs.prepare.outputs.runner-config, matrix.platform)) }}
+    runs-on: ${{ fromJSON(format(needs.prepare.outputs.runner-config, matrix.architectures)) }}
     needs:
       - prepare
     strategy:
       fail-fast: true
       matrix:
-        platform: ${{ fromJson(needs.prepare.outputs.platforms) }}
+        architectures: ${{ fromJson(needs.prepare.outputs.architectures) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Build and push ${{ matrix.platform }}
+      - name: Build and push ${{ fromJson(needs.prepare.outputs.platforms) }}
         id: build
         uses: equisoft-actions/docker-build-and-push@DOPS-5820/retire-buildx
         with:
@@ -137,7 +138,7 @@ jobs:
           dockerfile: ${{ inputs.dockerfile }}
           labels: ${{ needs.prepare.outputs.labels }}
           no-cache: ${{ inputs.no-cache }}
-          platforms: linux/${{ matrix.platform }}
+          platforms: ${{ fromJson(needs.prepare.outputs.platforms) }}
           pull: ${{ inputs.pull }}
           push: ${{ inputs.push }}
           push-manifest: "false"
