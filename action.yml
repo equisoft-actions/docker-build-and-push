@@ -93,7 +93,9 @@ runs:
             exit 1
           fi
           # Append platform suffix to each tag
-          new_tags=$(echo "${{ inputs.tags }}" | tr ',' '\n' | sed "s|$|-${{ inputs.platforms }}|" | paste -sd ',')
+          # Sanitize platform string for tag suffix
+          platform_suffix=$(echo "${{ inputs.platforms }}" | tr '/' '-' | tr ',' '-')
+          new_tags=$(echo "${{ inputs.tags }}" | tr ',' '\n' | sed "s|$|-${platform_suffix}|" | paste -sd ',')
         fi
         echo "tags=${new_tags}" >> $GITHUB_OUTPUT
 
