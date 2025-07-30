@@ -104,7 +104,7 @@ jobs:
 
       - name: Prepare image data
         id: metadata
-        uses: equisoft-actions/docker-metadata@DDOPS-5820/add-prepares
+        uses: equisoft-actions/docker-metadata@DOPS-5820/add-prepares
         with:
           title: ${{ inputs.name }}
           image-name: ${{ inputs.registry }}/${{ inputs.name }}
