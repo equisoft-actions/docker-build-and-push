@@ -97,6 +97,7 @@ jobs:
       labels: ${{ steps.metadata.outputs.labels }}
       annotations: ${{ steps.metadata.outputs.annotations }}
       platforms: ${{ steps.platforms.outputs.platforms }}
+      runner-config: ${{ steps.runner.outputs.runner-config }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -118,9 +119,22 @@ jobs:
           echo "platforms=$platforms_json" >> $GITHUB_OUTPUT
           echo "Platforms to build: $platforms_json"
 
+      - name: Prepare runner configuration
+        id: runner
+        run: |
+          if [[ "${{ inputs.use-self-hosted }}" == "true" ]]; then
+            echo "Using self-hosted runners"
+            runner_config='["self-hosted", "{0}-${{ inputs.instance-size }}"]'
+          else
+            echo "Using GitHub hosted runners"
+            runner_config='"{0}-${{ inputs.instance-size }}"'
+          fi
+          echo "runner-config=$runner_config" >> $GITHUB_OUTPUT
+          echo "Runner configuration template: $runner_config"
+
   build:
-    # 
-    runs-on: ${{ inputs.use-self-hosted && fromJSON(format('["self-hosted", "{0}-{1}"]', matrix.platform, inputs.instance-size)) || format('{0}-{1}', matrix.platform, inputs.instance-size) }}
+    runs-on: ${{ fromJSON(format(needs.prepare.outputs.runner-config, matrix.platform)) }}
+    # runs-on: ${{ inputs.use-self-hosted && fromJSON(format('["self-hosted", "{0}-{1}"]', matrix.platform, inputs.instance-size)) || format('{0}-{1}', matrix.platform, inputs.instance-size) }}
     needs:
       - prepare
     strategy:
