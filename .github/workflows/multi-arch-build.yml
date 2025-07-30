@@ -97,7 +97,7 @@ jobs:
       labels: ${{ steps.metadata.outputs.labels }}
       annotations: ${{ steps.metadata.outputs.annotations }}
       platforms: ${{ steps.metadata.outputs.platforms }}
-      runner-config: ${{ steps.metadata.outputs.runner-config }}
+      runner-config: ${{ steps.metadata.outputs.runners }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -115,13 +115,13 @@ jobs:
           instance-size: ${{ inputs.instance-size }}
 
   build:
-    runs-on: ${{ fromJSON(format(needs.metadata.outputs.runner-config, matrix.platform)) }}
+    runs-on: ${{ fromJSON(format(needs.prepare.outputs.runner-config, matrix.platform)) }}
     needs:
       - prepare
     strategy:
       fail-fast: true
       matrix:
-        platform: ${{ fromJson(needs.metadata.outputs.platforms) }}
+        platform: ${{ fromJson(needs.prepare.outputs.platforms) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
