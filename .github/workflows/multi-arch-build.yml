@@ -119,16 +119,13 @@ jobs:
           echo "Platforms to build: $platforms_json"
 
   build:
-    # runs-on: ${{ inputs.use-self-hosted && format('self-hosted-{0}-{1}', matrix.platform, inputs.instance-size) || format('{0}-{1}', matrix.platform, inputs.instance-size) }}
-    runs-on: [arm64-large-test]
+    runs-on: ${{ inputs.use-self-hosted && format('self-hosted-{0}-{1}', matrix.platform, inputs.instance-size) || format('{0}-{1}', matrix.platform, inputs.instance-size) }}
     needs:
       - prepare
     strategy:
       fail-fast: true
       matrix:
-        # platform: ${{ fromJson(needs.prepare.outputs.platforms) }}
-        platform:
-          - arm64
+        platform: ${{ fromJson(needs.prepare.outputs.platforms) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
