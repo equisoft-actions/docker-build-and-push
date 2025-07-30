@@ -138,7 +138,7 @@ jobs:
           dockerfile: ${{ inputs.dockerfile }}
           labels: ${{ needs.prepare.outputs.labels }}
           no-cache: ${{ inputs.no-cache }}
-          platforms: ${{ fromJson(needs.prepare.outputs.platforms) }}
+          platforms: ${{ needs.prepare.outputs.platforms }}
           pull: ${{ inputs.pull }}
           push: ${{ inputs.push }}
           push-manifest: "false"
