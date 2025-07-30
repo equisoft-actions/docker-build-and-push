@@ -97,7 +97,7 @@ jobs:
       labels: ${{ steps.metadata.outputs.labels }}
       annotations: ${{ steps.metadata.outputs.annotations }}
       platforms: ${{ steps.metadata.outputs.platforms }}
-      runner-config: ${{ steps.metadata.outputs.runners }}
+      runner-config: ${{ steps.metadata.outputs.runner-config }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
