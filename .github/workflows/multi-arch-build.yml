@@ -120,7 +120,7 @@ jobs:
 
   build:
     # runs-on: ${{ inputs.use-self-hosted && format('self-hosted-{0}-{1}', matrix.platform, inputs.instance-size) || format('{0}-{1}', matrix.platform, inputs.instance-size) }}
-    runs-on: [arm64-large]
+    runs-on: [arm64-large-test]
     needs:
       - prepare
     strategy:
