@@ -95,7 +95,7 @@ jobs:
     outputs:
       annotations: ${{ steps.metadata.outputs.annotations }}
       labels: ${{ steps.metadata.outputs.labels }}
-      matrix: ${{ steps.metadata.outputs.matrix-include }}
+      matrix-include: ${{ steps.metadata.outputs.matrix-include }}
       runner-config: ${{ steps.metadata.outputs.runner-config }}
       tags: ${{ steps.metadata.outputs.tags }}
     steps:
