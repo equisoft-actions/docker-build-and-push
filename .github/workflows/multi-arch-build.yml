@@ -115,6 +115,7 @@ jobs:
           instance-size: ${{ inputs.instance-size }}
 
   build:
+    name: Build ${{ matrix.platform }}
     runs-on: ${{ fromJSON(format(needs.prepare.outputs.runner-config, matrix.arch)) }}
     needs:
       - prepare
