@@ -123,11 +123,12 @@ jobs:
       fail-fast: true
       matrix:
         architectures: ${{ fromJson(needs.prepare.outputs.architectures) }}
+        platforms: ${{ fromJson(needs.prepare.outputs.platforms) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Build and push ${{ fromJson(needs.prepare.outputs.platforms) }}
+      - name: Build and push ${{ matrix.architectures }}
         id: build
         uses: equisoft-actions/docker-build-and-push@DOPS-5820/retire-buildx
         with:
@@ -138,7 +139,7 @@ jobs:
           dockerfile: ${{ inputs.dockerfile }}
           labels: ${{ needs.prepare.outputs.labels }}
           no-cache: ${{ inputs.no-cache }}
-          platforms: ${{ needs.prepare.outputs.platforms }}
+          platforms: ${{ matrix.platforms }}
           pull: ${{ inputs.pull }}
           push: ${{ inputs.push }}
           push-manifest: "false"
