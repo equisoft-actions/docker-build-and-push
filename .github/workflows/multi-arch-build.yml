@@ -46,7 +46,6 @@ on:
         description: Comma-separated list of platforms to build
         type: string
         required: false
-        default: "amd64,arm64"
       pull:
         description: Always attempt to pull all referenced images
         type: boolean
