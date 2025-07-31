@@ -126,7 +126,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Build and push ${{ matrix.architectures }}
+      - name: Build and push ${{ matrix.platform }}
         id: build
         uses: equisoft-actions/docker-build-and-push@DOPS-5820/retire-buildx
         with:
