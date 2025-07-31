@@ -94,9 +94,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       annotations: ${{ steps.metadata.outputs.annotations }}
-      architectures: ${{ steps.metadata.outputs.architectures }}
       labels: ${{ steps.metadata.outputs.labels }}
-      platforms: ${{ steps.metadata.outputs.platforms }}
+      matrix: ${{ steps.metadata.outputs.matrix-include }}
       runner-config: ${{ steps.metadata.outputs.runner-config }}
       tags: ${{ steps.metadata.outputs.tags }}
     steps:
@@ -116,14 +115,13 @@ jobs:
           instance-size: ${{ inputs.instance-size }}
 
   build:
-    runs-on: ${{ fromJSON(format(needs.prepare.outputs.runner-config, matrix.architectures)) }}
+    runs-on: ${{ fromJSON(format(needs.prepare.outputs.runner-config, matrix.arch)) }}
     needs:
       - prepare
     strategy:
       fail-fast: true
       matrix:
-        architectures: ${{ fromJson(needs.prepare.outputs.architectures) }}
-        platforms: ${{ fromJson(needs.prepare.outputs.platforms) }}
+        include: ${{ fromJson(needs.prepare.outputs.matrix-include) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -139,7 +137,7 @@ jobs:
           dockerfile: ${{ inputs.dockerfile }}
           labels: ${{ needs.prepare.outputs.labels }}
           no-cache: ${{ inputs.no-cache }}
-          platforms: ${{ matrix.platforms }}
+          platforms: ${{ matrix.platform }}
           pull: ${{ inputs.pull }}
           push: ${{ inputs.push }}
           push-manifest: "false"
