@@ -4,14 +4,11 @@ description: Build a container image and optionally push it. Labels and tags wil
 inputs:
   registry:
     description: The registry where the image will be pushed to.
+    required: true
+  annotations:
+    description: Annotations to apply to the image, in the format 'key=value,key2=value2'.
     required: false
-    default: registry.equisoft.io
-  aws-access-key-id:
-    description: DEPRECATED. Use `role-to-assume` instead. An AWS access key ID that has write permissions to the registry.
-    required: false
-  aws-secret-access-key:
-    description: An AWS secret access key that has write permissions to the registry.
-    required: false
+    default: ""
   aws-region:
     description: AWS region for the registry.
     required: false
@@ -28,36 +25,20 @@ inputs:
     required: false
     default: "."
   dockerfile:
-    description: Relative Dockerfile under `working-directory`.
+    description: Path to Dockerfile relative to context (e.g., 'Dockerfile' or 'docker/Dockerfile')
     required: true
     default: Dockerfile
-  request-cpu:
-    description: Requested cpu for k8s
+  labels:
+    description: Labels to apply to the image, in the format 'key=value,key2=value2'.
     required: false
-    default: '4'
-  max-cpu:
-    description: Max cpu for k8s
-    required: false
-    default: '4'
-  request-memory:
-    description: Requested memory for k8s
-    required: true
-    default: '8Gi'
-  max-memory:
-    description: Max memory for k8s
-    required: true
-    default: '16Gi'
-  name:
-    description: A simple name for this image
-    required: true
+    default: ""
   no-cache:
     description: Do not use cache when building the image (default false)
     required: false
     default: "false"
-  is-release:
-    description: if this build is a production release
-    required: false
-    default: "false"
+  platforms:
+    description: The target platform for the image, e.g., 'linux/amd64,linux/arm64'.
+    required: true
   pull:
     description: Always attempt to pull all referenced images (default false)
     required: false
@@ -66,27 +47,23 @@ inputs:
     description: "`true` to push the built image. `false` otherwise (default)."
     required: true
     default: "false"
-  platforms:
-    description: "List of platforms to build"
-    required: true
-    default: "linux/amd64,linux/arm64"
+  push-manifest:
+    description: If true, push a final manifest list after building all platforms. Cannot be false when building for multiple platforms.
+    required: false
+    default: "true"
   role-to-assume:
     description: Role to assume that has write access to the registry.
     required: false
   role-session-name:
-    description: Session name to use when assuming the role.
+    description: Session name to use when assuming the role (optional)
     required: false
-  use-emulation:
-    description: "Set to false to use k8s cluster"
-    required: true
-    default: "true"
-  version:
-    description: The SemVer compatible version for this image, without prefixes.
+  tags:
+    description: Comma-separated list of tags to apply to the image. Do not use with manifest builds.
     required: true
   working-directory:
     description: >-
       Relative path under $GITHUB_WORKSPACE where the project is located.
-      This also acts as the context given to the docker build command.
+      Used as Docker build context if 'context' input is not provided.
     required: false
     default: "."
 
@@ -94,9 +71,6 @@ outputs:
   image-id:
     description: Image ID built by this action
     value: ${{ steps.build-push.outputs.imageid }}
-  image-version:
-    description: Image version built by this action
-    value: ${{ steps.outputs.outputs.image-version }}
 
 runs:
   using: composite
@@ -105,27 +79,33 @@ runs:
       shell: bash
       id: context
       run: |
-        echo "has-role=${{ inputs.role-to-assume != '' }}" >> $GITHUB_OUTPUT
+        if [[ -z "${{ inputs.role-to-assume }}" && -n "${{ inputs.aws-region }}" ]]; then
+          echo "Error: AWS region is set but role-to-assume is not." >&2
+          exit 1
+        fi
         echo "is-ecr=${{ inputs.aws-region != '' }}" >> $GITHUB_OUTPUT
-
-    - name: Prepare image data
-      id: metadata
-      uses: equisoft-actions/docker-metadata@v1
-      with:
-        title: ${{ inputs.name }}
-        image-name: ${{ inputs.registry }}/${{ inputs.name }}
-        release: ${{ inputs.is-release }}
-        version: ${{ inputs.version }}
+        if [[ "${{ inputs.push-manifest }}" == "true" ]]; then
+          # Use tag as is
+          new_tags=$(echo "${{ inputs.tags }}")
+        else
+          if [[ "${{ inputs.platforms }}" == *","* ]]; then
+            echo "Error: When building for multiple platforms, push-manifest must be true to create a manifest list. Please set push-manifest to true." >&2
+            exit 1
+          fi
+          # Append platform suffix to each tag
+          # Sanitize platform string for tag suffix
+          platform_suffix=$(echo "${{ inputs.platforms }}" | tr '/' '-' | tr ',' '-')
+          new_tags=$(echo "${{ inputs.tags }}" | tr ',' '\n' | sed "s|$|-${platform_suffix}|" | paste -sd ',')
+        fi
+        echo "tags=${new_tags}" >> $GITHUB_OUTPUT
 
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v4
       if: steps.context.outputs.is-ecr == 'true'
       with:
-        aws-access-key-id: ${{ steps.context.outputs.has-role != 'true' && inputs.aws-access-key-id || '' }}
-        aws-secret-access-key: ${{ steps.context.outputs.has-role != 'true' && inputs.aws-secret-access-key || '' }}
         aws-region: ${{ inputs.aws-region }}
         role-to-assume: ${{ inputs.role-to-assume }}
-        role-session-name: ${{ inputs.role-session-name }}
+        role-session-name: ${{ inputs.role-session-name && inputs.role-session-name || 'build-and-push' }}-${{ github.run_id }}
 
     - name: Login to ECR
       uses: aws-actions/amazon-ecr-login@v2
@@ -133,87 +113,56 @@ runs:
 
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v3
-      if: inputs.use-emulation == 'true'
+      # if inputs.platforms contains more than one platform, this step is required to enable multi-arch builds
+      if: contains(inputs.platforms, ',')
       with:
         # see: https://github.com/tonistiigi/binfmt/issues/215
         # see: https://github.com/docker/setup-qemu-action/issues/198
         image: tonistiigi/binfmt:qemu-v7.0.0-28
 
-    - name: Set up Local Docker Buildx
+    - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
-      if: inputs.use-emulation == 'true'
-
-    - name: Set up k8s Docker Buildx
-      id: k8s-buildx
-      uses: docker/setup-buildx-action@v3
-      if: inputs.use-emulation == 'false'
-      with:
-        driver: kubernetes
-        driver-opts: |
-          namespace=actions-runner-docker
-          requests.cpu=${{ inputs.request-cpu }}
-          limits.cpu=${{ inputs.max-cpu }}
-          requests.memory=${{ inputs.request-memory }}
-          limits.memory=${{ inputs.max-memory }}
-          nodeselector=eks/nodegroup=github-build-amd64
-          "tolerations=key=dedicated,value=build-amd64,operator=Equal,effect=NoSchedule"
-          annotations=karpenter.sh/do-not-disrupt=true
-          labels=build=true
-          rootless=true
-
-    - name: Set up k8s Docker Buildx
-      shell: bash
-      if: inputs.use-emulation == 'false'
-      run: |
-        for row in $(echo ${{ inputs.platforms }} | jq -R -c 'split(",") | del(.[] | select(. == "linux/amd64")) | .[]'); do
-          platform=$(echo $row | jq -r .)
-          arch=${platform##*/}
-
-          # Build driver options
-          driver_opts="namespace=actions-runner-docker"
-          driver_opts+=",requests.cpu=${{ inputs.request-cpu }}"
-          driver_opts+=",requests.memory=${{ inputs.request-memory }}"
-          driver_opts+=",limits.cpu=${{ inputs.max-cpu }}"
-          driver_opts+=",limits.memory=${{ inputs.max-memory }}"
-          driver_opts+=",nodeselector=eks/nodegroup=github-build-${arch}"
-          driver_opts+=",\"tolerations=key=dedicated,value=build-${arch},operator=Equal,effect=NoSchedule\""
-          driver_opts+=",annotations=karpenter.sh/do-not-disrupt=true"
-          driver_opts+=",labels=build=true"
-          driver_opts+=",rootless=true"
-
-          docker buildx create --append \
-                  --name ${{ steps.k8s-buildx.outputs.name }} \
-                  --node ${{ steps.k8s-buildx.outputs.name }}-$arch \
-                  --driver=kubernetes \
-                  --platform $platform \
-                  --driver-opt "$driver_opts"
-        done
 
     - name: Build and push
       id: build-push
       uses: docker/build-push-action@v6
       env:
-        DOCKER_BUILD_SUMMARY: ${{ inputs.build-summary == 'true' || 'false' }}
+        DOCKER_BUILD_SUMMARY: ${{ inputs.build-summary }}
       with:
-        annotations: ${{ steps.metadata.outputs.annotations }}
+        annotations: ${{ inputs.annotations }}
         build-args: |
           ${{ inputs.build-args }}
           BUILDKIT_MULTI_PLATFORM=1
         context: ${{ inputs.context }}
         file: ${{ inputs.working-directory }}/${{ inputs.dockerfile }}
-        labels: ${{ steps.metadata.outputs.labels }}
-        load: ${{ inputs.push != 'true' && !contains(inputs.platforms, ',') }}
+        labels: ${{ inputs.labels }}
         no-cache: ${{ inputs.no-cache == 'true' }}
         provenance: false
         pull: ${{ inputs.pull == 'true' }}
         push: ${{ inputs.push == 'true' }}
         platforms: ${{ inputs.platforms }}
-        tags: ${{ steps.metadata.outputs.tags }}
+        tags: ${{ steps.context.outputs.tags }}
 
-    - name: Output image tag
-      id: outputs
+    - name: Sanitize platform string for artifact name
+      if: inputs.push == 'true' && !contains(inputs.platforms, ',')
+      id: sanitize_platform
       shell: bash
       run: |
-        IMAGE_TAG=$(cut -d',' -f1 <<<'${{ steps.metadata.outputs.tags }}')
-        IMAGE_VERSION=$(cut -d':' -f2 <<<"${IMAGE_TAG}")
-        echo "image-version=${IMAGE_VERSION}" >> $GITHUB_OUTPUT
+        platform_string="${{ inputs.platforms }}"
+        echo "name=${platform_string//\//-}" >> $GITHUB_OUTPUT
+
+    - name: Export digest
+      if: inputs.push == 'true' && !contains(inputs.platforms, ',')
+      shell: bash
+      run: |
+        mkdir -p ${{ runner.temp }}/digests
+        echo "${{ steps.build-push.outputs.digest }}" > ${{ runner.temp }}/digests/digest-${{ steps.sanitize_platform.outputs.name }}
+
+    - name: Upload digest
+      if: inputs.push == 'true' && !contains(inputs.platforms, ',')
+      uses: actions/upload-artifact@v4
+      with:
+        name: digests-${{ steps.sanitize_platform.outputs.name }}
+        path: ${{ runner.temp }}/digests/*
+        if-no-files-found: error
+        retention-days: 1
