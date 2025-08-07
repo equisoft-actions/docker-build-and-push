@@ -2,9 +2,6 @@ name: Build and configure a container image
 description: Build a container image and optionally push it. Labels and tags will be configured as per the OCI standards.
 
 inputs:
-  registry:
-    description: The registry where the image will be pushed to.
-    required: true
   annotations:
     description: Annotations to apply to the image, in the format 'key=value,key2=value2'.
     required: false
@@ -32,6 +29,9 @@ inputs:
     description: Labels to apply to the image, in the format 'key=value,key2=value2'.
     required: false
     default: ""
+  name:
+    description: Image name
+    required: true
   no-cache:
     description: Do not use cache when building the image (default false)
     required: false
@@ -51,11 +51,14 @@ inputs:
     description: If true, push a final manifest list after building all platforms. Cannot be false when building for multiple platforms.
     required: false
     default: "true"
-  role-to-assume:
-    description: Role to assume that has write access to the registry.
-    required: false
+  registry:
+    description: The registry where the image will be pushed to.
+    required: true
   role-session-name:
     description: Session name to use when assuming the role (optional)
+    required: false
+  role-to-assume:
+    description: Role to assume that has write access to the registry.
     required: false
   tags:
     description: Comma-separated list of tags to apply to the image. Do not use with manifest builds.
@@ -143,26 +146,29 @@ runs:
         platforms: ${{ inputs.platforms }}
         tags: ${{ steps.context.outputs.tags }}
 
-    - name: Sanitize platform string for artifact name
+    - name: Get the disgest file name
       if: inputs.push == 'true' && !contains(inputs.platforms, ',')
-      id: sanitize_platform
+      id: digest
       shell: bash
       run: |
-        platform_string="${{ inputs.platforms }}"
-        echo "name=${platform_string//\//-}" >> $GITHUB_OUTPUT
+        platform_sanitized="${{ inputs.platforms }}"
+        platform_sanitized="${platform_sanitized//\//-}"
+        name_sanitized="${{ inputs.name }}"
+        name_sanitized="${name_sanitized//\//-}"
+        echo "suffix=${name_sanitized}-${platform_sanitized}" >> $GITHUB_OUTPUT
 
     - name: Export digest
       if: inputs.push == 'true' && !contains(inputs.platforms, ',')
       shell: bash
       run: |
         mkdir -p ${{ runner.temp }}/digests
-        echo "${{ steps.build-push.outputs.digest }}" > ${{ runner.temp }}/digests/digest-${{ steps.sanitize_platform.outputs.name }}
+        echo "${{ steps.build-push.outputs.digest }}" > ${{ runner.temp }}/digests/digest-${{ steps.digest.outputs.suffix }}
 
     - name: Upload digest
       if: inputs.push == 'true' && !contains(inputs.platforms, ',')
       uses: actions/upload-artifact@v4
       with:
-        name: digests-${{ steps.sanitize_platform.outputs.name }}
+        name: digests-${{ steps.digest.outputs.suffix }}
         path: ${{ runner.temp }}/digests/*
         if-no-files-found: error
         retention-days: 1
