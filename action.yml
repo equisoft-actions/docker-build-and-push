@@ -155,7 +155,10 @@ runs:
         platform_sanitized="${platform_sanitized//\//-}"
         name_sanitized="${{ inputs.name }}"
         name_sanitized="${name_sanitized//\//-}"
-        echo "suffix=${name_sanitized}-${platform_sanitized}" >> $GITHUB_OUTPUT
+        # Digest file name format: digest-<name>---<platform>
+        # As name may contain - characters, we use --- as a separator
+        # to avoid example- and example-worker- collisions
+        echo "suffix=${name_sanitized}---${platform_sanitized}" >> $GITHUB_OUTPUT
 
     - name: Export digest
       if: inputs.push == 'true' && !contains(inputs.platforms, ',')
