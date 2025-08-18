@@ -70,6 +70,11 @@ inputs:
     required: false
     default: "."
 
+secrets: 
+  secrets-build-args:
+    description: Secrets arguments passed to the build command
+    required: false
+
 outputs:
   image-id:
     description: Image ID built by this action
@@ -145,6 +150,7 @@ runs:
         push: ${{ inputs.push == 'true' }}
         platforms: ${{ inputs.platforms }}
         tags: ${{ steps.context.outputs.tags }}
+        secrets: ${{ secrets.secrets-build-args }}
 
     - name: Get the disgest file name
       if: inputs.push == 'true' && !contains(inputs.platforms, ',')
