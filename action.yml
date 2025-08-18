@@ -63,17 +63,15 @@ inputs:
   tags:
     description: Comma-separated list of tags to apply to the image. Do not use with manifest builds.
     required: true
+  secrets-build-args:
+    description: Secrets arguments passed to the build command
+    required: false
   working-directory:
     description: >-
       Relative path under $GITHUB_WORKSPACE where the project is located.
       Used as Docker build context if 'context' input is not provided.
     required: false
     default: "."
-
-secrets: 
-  secrets-build-args:
-    description: Secrets arguments passed to the build command
-    required: false
 
 outputs:
   image-id:
@@ -150,7 +148,7 @@ runs:
         push: ${{ inputs.push == 'true' }}
         platforms: ${{ inputs.platforms }}
         tags: ${{ steps.context.outputs.tags }}
-        secrets: ${{ secrets.secrets-build-args }}
+        secrets: ${{ inputs.secrets-build-args }}
 
     - name: Get the disgest file name
       if: inputs.push == 'true' && !contains(inputs.platforms, ',')
