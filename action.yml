@@ -64,7 +64,7 @@ inputs:
     description: Comma-separated list of tags to apply to the image. Do not use with manifest builds.
     required: true
   secrets-build-args:
-    description: Secrets arguments passed to the build command
+    description: "Secrets arguments passed to the build command. Format: multiline string with each secret on a new line as \"KEY=value\""
     required: false
   working-directory:
     description: >-
