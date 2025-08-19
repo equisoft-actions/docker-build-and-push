@@ -63,6 +63,9 @@ inputs:
   tags:
     description: Comma-separated list of tags to apply to the image. Do not use with manifest builds.
     required: true
+  secrets-build-args:
+    description: "Secrets arguments passed to the build command. Format: multiline string with each secret on a new line as \"KEY=value\""
+    required: false
   working-directory:
     description: >-
       Relative path under $GITHUB_WORKSPACE where the project is located.
@@ -145,6 +148,7 @@ runs:
         push: ${{ inputs.push == 'true' }}
         platforms: ${{ inputs.platforms }}
         tags: ${{ steps.context.outputs.tags }}
+        secrets: ${{ inputs.secrets-build-args }}
 
     - name: Get the disgest file name
       if: inputs.push == 'true' && !contains(inputs.platforms, ',')
