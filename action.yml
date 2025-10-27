@@ -173,7 +173,7 @@ runs:
 
     - name: Upload digest
       if: inputs.push == 'true' && !contains(inputs.platforms, ',')
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: digests-${{ steps.digest.outputs.suffix }}
         path: ${{ runner.temp }}/digests/*
