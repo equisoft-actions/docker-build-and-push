@@ -106,7 +106,7 @@ runs:
         echo "tags=${new_tags}" >> $GITHUB_OUTPUT
 
     - name: Configure AWS Credentials
-      uses: aws-actions/configure-aws-credentials@v6
+      uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6
       if: steps.context.outputs.is-ecr == 'true'
       with:
         aws-region: ${{ inputs.aws-region }}
@@ -114,11 +114,11 @@ runs:
         role-session-name: ${{ inputs.role-session-name && inputs.role-session-name || 'build-and-push' }}-${{ github.run_id }}
 
     - name: Login to ECR
-      uses: aws-actions/amazon-ecr-login@v2
+      uses: aws-actions/amazon-ecr-login@19d944daaa35f0fa1d3f7f8af1d3f2e5de25c5b7 # v2
       if: steps.context.outputs.is-ecr == 'true'
 
     - name: Set up QEMU
-      uses: docker/setup-qemu-action@v4
+      uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4
       # if inputs.platforms contains more than one platform, this step is required to enable multi-arch builds
       if: contains(inputs.platforms, ',')
       with:
@@ -127,11 +127,11 @@ runs:
         image: tonistiigi/binfmt:qemu-v7.0.0-28
 
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v4
+      uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4
 
     - name: Build and push
       id: build-push
-      uses: docker/build-push-action@v7
+      uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7
       env:
         DOCKER_BUILD_SUMMARY: ${{ inputs.build-summary }}
       with:
@@ -173,7 +173,7 @@ runs:
 
     - name: Upload digest
       if: inputs.push == 'true' && !contains(inputs.platforms, ',')
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
       with:
         name: digests-${{ steps.digest.outputs.suffix }}
         path: ${{ runner.temp }}/digests/*
