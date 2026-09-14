@@ -106,7 +106,7 @@ runs:
         echo "tags=${new_tags}" >> $GITHUB_OUTPUT
 
     - name: Configure AWS Credentials
-      uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6
+      uses: aws-actions/configure-aws-credentials@cbe3b392738ccf3f987d68400dafcf4b0624a56c # v6
       if: steps.context.outputs.is-ecr == 'true'
       with:
         aws-region: ${{ inputs.aws-region }}
@@ -118,7 +118,7 @@ runs:
       if: steps.context.outputs.is-ecr == 'true'
 
     - name: Set up QEMU
-      uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4
+      uses: docker/setup-qemu-action@1f40c72289eff860ee54a304f1438e3cff362e0a # v4
       # if inputs.platforms contains more than one platform, this step is required to enable multi-arch builds
       if: contains(inputs.platforms, ',')
       with:
