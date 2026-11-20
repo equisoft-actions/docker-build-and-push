@@ -161,6 +161,7 @@ runs:
         subject-name: ${{ inputs.registry }}/${{ inputs.name }}
         subject-digest: ${{ steps.build-push.outputs.digest }}
         push-to-registry: true
+        create-storage-record: false
 
     - name: Get the disgest file name
       if: inputs.push == 'true' && !contains(inputs.platforms, ',')
