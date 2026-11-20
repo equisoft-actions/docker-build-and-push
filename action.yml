@@ -6,6 +6,10 @@ inputs:
     description: Annotations to apply to the image, in the format 'key=value,key2=value2'.
     required: false
     default: ""
+  attestation:
+    description: Whether to enable attestation for the image (require permissions attestation).
+    required: false
+    default: "false"
   aws-region:
     description: AWS region for the registry.
     required: false
@@ -149,6 +153,14 @@ runs:
         platforms: ${{ inputs.platforms }}
         tags: ${{ steps.context.outputs.tags }}
         secrets: ${{ inputs.secrets-build-args }}
+
+    - name: Attest build provenance
+      if: inputs.attestation == 'true' && inputs.push == 'true'
+      uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+      with:
+        subject-name: ${{ inputs.registry }}/${{ inputs.name }}
+        subject-digest: ${{ steps.build-push.outputs.digest }}
+        push-to-registry: true
 
     - name: Get the disgest file name
       if: inputs.push == 'true' && !contains(inputs.platforms, ',')
